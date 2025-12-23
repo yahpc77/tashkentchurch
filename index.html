@@ -14,26 +14,21 @@
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
         
-        /* [인쇄/캡처 전용 스타일] */
+        /* 캡처 시 적용될 스타일 */
         .print-text {
-            display: block;
-            width: 100%;
-            padding: 3px 0;
-            font-weight: 700;
-            color: #1e293b; /* slate-800 */
-            line-height: 1.5;
-            font-size: 15px;
+            display: block; width: 100%; padding: 2px 0;
+            font-weight: 700; color: #1e293b; line-height: 1.4; font-size: 14px;
         }
         
-        /* 화면상에서는 숨겨졌다가 캡처할 때만 적용되는 클래스들 */
-        .print-only-gap { display: none; }
+        /* 그래프 바 애니메이션 (화면용) */
+        .bar-growth { transition: height 1s ease-out; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen pb-32">
 
     <div id="report-container" class="bg-white p-6 mx-auto max-w-lg shadow-lg my-6 md:my-10 relative">
         
-        <header class="mb-5 border-b-4 border-slate-900 pb-3">
+        <header class="mb-4 border-b-4 border-slate-900 pb-2">
             <h1 class="text-3xl font-black text-slate-900 tracking-tight">주일 예배 보고서</h1>
             <p class="text-slate-500 font-bold mt-1 text-xs tracking-widest">TASHKENT KOREAN CHURCH</p>
         </header>
@@ -41,10 +36,8 @@
         <div id="content-grid" class="grid grid-cols-1 gap-6">
             
             <section id="sec-1">
-                <h2 class="text-lg font-bold text-blue-900 border-b-2 border-blue-900 pb-1 mb-3">
-                    Ⅰ. 예배 정보
-                </h2>
-                <div class="space-y-3">
+                <h2 class="text-lg font-bold text-blue-900 border-b-2 border-blue-900 pb-1 mb-3">Ⅰ. 예배 정보</h2>
+                <div class="space-y-2">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">날짜</label>
@@ -67,102 +60,119 @@
             </section>
 
             <section id="sec-2">
-                <h2 class="text-lg font-bold text-blue-900 border-b-2 border-blue-900 pb-1 mb-3">
-                    Ⅱ. 출석 현황
-                </h2>
-
-                <h3 class="text-xs font-bold text-slate-600 mb-2">1. 대예배</h3>
-                <div class="border border-slate-300 rounded overflow-hidden mb-5">
+                <h2 class="text-lg font-bold text-blue-900 border-b-2 border-blue-900 pb-1 mb-3">Ⅱ. 출석 현황</h2>
+                
+                <h3 class="text-xs font-bold text-slate-600 mb-1">1. 대예배</h3>
+                <div class="border border-slate-300 rounded overflow-hidden mb-4">
                     <table class="w-full text-center">
                         <thead class="bg-slate-100 text-slate-700 font-bold text-xs">
                             <tr>
-                                <th class="py-2 border-r border-b w-1/5">구분</th>
-                                <th class="py-2 border-r border-b">남</th>
-                                <th class="py-2 border-r border-b">여</th>
-                                <th class="py-2 border-b bg-slate-200 w-1/5">소계</th>
+                                <th class="py-1 border-r border-b w-1/5">구분</th>
+                                <th class="py-1 border-r border-b">남</th>
+                                <th class="py-1 border-r border-b">여</th>
+                                <th class="py-1 border-b bg-slate-200 w-1/5">소계</th>
                             </tr>
                         </thead>
                         <tbody class="text-sm">
                             <tr>
-                                <td class="py-2 border-r border-b font-medium bg-white">1부</td>
+                                <td class="py-1 border-r border-b font-medium bg-white">1부</td>
                                 <td class="border-r border-b bg-white p-0"><input type="number" id="m1" class="calc-input w-full h-full text-center py-2 outline-none bg-transparent" placeholder="0"></td>
                                 <td class="border-r border-b bg-white p-0"><input type="number" id="f1" class="calc-input w-full h-full text-center py-2 outline-none bg-transparent" placeholder="0"></td>
                                 <td class="border-b font-bold text-blue-900 bg-slate-50" id="sub1">0</td>
                             </tr>
                             <tr>
-                                <td class="py-2 border-r font-medium bg-white">2부</td>
+                                <td class="py-1 border-r font-medium bg-white">2부</td>
                                 <td class="border-r bg-white p-0"><input type="number" id="m2" class="calc-input w-full h-full text-center py-2 outline-none bg-transparent" placeholder="0"></td>
                                 <td class="border-r bg-white p-0"><input type="number" id="f2" class="calc-input w-full h-full text-center py-2 outline-none bg-transparent" placeholder="0"></td>
                                 <td class="font-bold text-blue-900 bg-slate-50" id="sub2">0</td>
                             </tr>
                         </tbody>
                     </table>
-                    <div class="bg-slate-50 p-2 text-right border-t border-slate-300 flex justify-end items-center gap-2">
-                        <span class="text-xs font-bold text-slate-500">대예배 합계:</span>
-                        <span class="font-bold text-lg text-blue-900" id="mainTotal">0</span>
-                        <span class="text-sm text-slate-700">명</span>
+                    <div class="bg-slate-50 px-2 py-1 text-right border-t border-slate-300">
+                        <span class="text-xs font-bold text-slate-500 mr-1">합계:</span>
+                        <span class="font-bold text-base text-blue-900" id="mainTotal">0</span>
+                        <span class="text-xs text-slate-700">명</span>
                     </div>
                 </div>
 
-                <h3 class="text-xs font-bold text-slate-600 mb-2">2. 교육부서</h3>
-                <div class="grid grid-cols-4 border border-slate-300 text-center rounded overflow-hidden mb-5 text-sm">
-                    <div class="bg-slate-100 p-2 font-bold border-r border-b text-xs">청년</div>
-                    <div class="bg-slate-100 p-2 font-bold border-r border-b text-xs">중고등</div>
-                    <div class="bg-slate-100 p-2 font-bold border-r border-b text-xs">유초등</div>
-                    <div class="bg-slate-100 p-2 font-bold border-b text-xs">유아</div>
+                <h3 class="text-xs font-bold text-slate-600 mb-1">2. 교육부서</h3>
+                <div class="grid grid-cols-4 border border-slate-300 text-center rounded overflow-hidden mb-4 text-sm">
+                    <div class="bg-slate-100 py-1 font-bold border-r border-b text-xs">청년</div>
+                    <div class="bg-slate-100 py-1 font-bold border-r border-b text-xs">중고등</div>
+                    <div class="bg-slate-100 py-1 font-bold border-r border-b text-xs">유초등</div>
+                    <div class="bg-slate-100 py-1 font-bold border-b text-xs">유아</div>
                     
-                    <div class="border-r bg-white"><input type="number" class="calc-input edu-input w-full text-center py-3 outline-none bg-transparent" placeholder="0"></div>
-                    <div class="border-r bg-white"><input type="number" class="calc-input edu-input w-full text-center py-3 outline-none bg-transparent" placeholder="0"></div>
-                    <div class="border-r bg-white"><input type="number" class="calc-input edu-input w-full text-center py-3 outline-none bg-transparent" placeholder="0"></div>
-                    <div class="bg-white"><input type="number" class="calc-input edu-input w-full text-center py-3 outline-none bg-transparent" placeholder="0"></div>
+                    <div class="border-r bg-white"><input type="number" class="calc-input edu-input w-full text-center py-2 outline-none bg-transparent" placeholder="0"></div>
+                    <div class="border-r bg-white"><input type="number" class="calc-input edu-input w-full text-center py-2 outline-none bg-transparent" placeholder="0"></div>
+                    <div class="border-r bg-white"><input type="number" class="calc-input edu-input w-full text-center py-2 outline-none bg-transparent" placeholder="0"></div>
+                    <div class="bg-white"><input type="number" class="calc-input edu-input w-full text-center py-2 outline-none bg-transparent" placeholder="0"></div>
                 </div>
 
-                <div class="bg-blue-900 text-white rounded-lg p-4 shadow-md flex justify-between items-center h-20">
-                    <span class="text-lg font-bold opacity-90 whitespace-nowrap">총 출석 인원</span>
+                <div class="bg-blue-900 text-white rounded-lg p-3 shadow-md flex justify-between items-center mb-4">
+                    <span class="text-base font-bold opacity-90">총 출석</span>
                     <div class="text-right">
-                        <span class="text-4xl font-black tracking-tight" id="grandTotal">0</span>
-                        <span class="text-xl font-bold ml-1">명</span>
+                        <span class="text-3xl font-black tracking-tight" id="grandTotal">0</span>
+                        <span class="text-base font-bold ml-1">명</span>
                     </div>
                 </div>
             </section>
 
             <section id="sec-3">
-                <h2 class="text-lg font-bold text-blue-900 border-b-2 border-blue-900 pb-1 mb-3">
-                    Ⅲ. 상세 보고
-                </h2>
-                <div class="space-y-3 h-full">
+                <h2 class="text-lg font-bold text-blue-900 border-b-2 border-blue-900 pb-1 mb-3">Ⅲ. 상세 보고</h2>
+                <div class="space-y-2 h-full">
                     <div class="flex flex-col sm:flex-row gap-2">
-                        <label class="font-bold text-slate-700 w-16 pt-2 shrink-0 text-sm">새가족</label>
+                        <label class="font-bold text-slate-700 w-14 pt-2 shrink-0 text-sm">새가족</label>
                         <textarea rows="2" class="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm resize-none focus:outline-none"></textarea>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-2">
-                        <label class="font-bold text-slate-700 w-16 pt-2 shrink-0 text-sm">방문자</label>
-                        <textarea rows="4" class="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm resize-none focus:outline-none"></textarea>
+                        <label class="font-bold text-slate-700 w-14 pt-2 shrink-0 text-sm">방문자</label>
+                        <textarea rows="3" class="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm resize-none focus:outline-none"></textarea>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-2 h-full">
-                        <label class="font-bold text-slate-700 w-16 pt-2 shrink-0 text-sm">특이사항</label>
-                        <textarea rows="5" class="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm resize-none focus:outline-none h-full"></textarea>
+                        <label class="font-bold text-slate-700 w-14 pt-2 shrink-0 text-sm">특이사항</label>
+                        <textarea rows="4" class="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm resize-none focus:outline-none h-full"></textarea>
                     </div>
                 </div>
             </section>
 
-        </div> <div id="footer-msg" class="mt-8 text-center pt-4">
-            <p class="text-xl font-bold text-slate-800 tracking-wide">위와 같이 보고합니다.</p>
-        </div>
+            <div id="chart-input-area" class="bg-slate-50 p-4 rounded-lg border border-slate-200 mt-4">
+                <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    📊 주간 출석 추이 (그래프 데이터)
+                </h3>
+                <div class="grid grid-cols-4 gap-2 text-center">
+                    <div>
+                        <span class="text-xs text-slate-500 block mb-1">3주전</span>
+                        <input type="number" id="week-3" value="120" class="w-full text-center border rounded py-1 text-sm">
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 block mb-1">2주전</span>
+                        <input type="number" id="week-2" value="135" class="w-full text-center border rounded py-1 text-sm">
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 block mb-1">지난주</span>
+                        <input type="number" id="week-1" value="128" class="w-full text-center border rounded py-1 text-sm">
+                    </div>
+                    <div>
+                        <span class="text-xs text-blue-600 font-bold block mb-1">이번주</span>
+                        <input type="number" id="week-0" disabled class="w-full text-center border border-blue-200 bg-blue-50 rounded py-1 text-sm font-bold text-blue-700 placeholder-blue-300" placeholder="자동">
+                    </div>
+                </div>
+            </div>
 
-    </div>
+        </div> </div>
 
-    <div class="fixed bottom-0 left-0 w-full p-4 bg-white/95 backdrop-blur border-t border-slate-200 text-center z-50">
+    <div class="fixed bottom-0 left-0 w-full p-3 bg-white/95 backdrop-blur border-t border-slate-200 text-center z-50">
         <button onclick="downloadReport()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-full shadow-xl text-lg transition-all active:scale-95 flex items-center justify-center mx-auto gap-2">
-            <span>💾 A4 보고서 저장 (Click!)</span>
+            <span>💾 A4 보고서 저장 (Graph 포함)</span>
         </button>
     </div>
 
     <script>
-        // [1] 자동 계산 로직
+        // [1] 자동 계산 로직 & 그래프 데이터 연동
         const inputs = document.querySelectorAll('.calc-input');
         
         function calculate() {
+            // 소계 계산
             const m1 = Number(document.getElementById('m1').value) || 0;
             const f1 = Number(document.getElementById('f1').value) || 0;
             const sub1 = m1 + f1;
@@ -176,91 +186,150 @@
             const mainTotal = sub1 + sub2;
             document.getElementById('mainTotal').innerText = mainTotal;
 
+            // 교육부서 합계
             let eduTotal = 0;
             document.querySelectorAll('.edu-input').forEach(input => {
                 eduTotal += Number(input.value) || 0;
             });
 
-            document.getElementById('grandTotal').innerText = mainTotal + eduTotal;
+            // 총 출석 (이번주)
+            const grandTotal = mainTotal + eduTotal;
+            document.getElementById('grandTotal').innerText = grandTotal;
+            
+            // 그래프 데이터 '이번주' 칸에 자동 입력
+            document.getElementById('week-0').value = grandTotal;
         }
 
         inputs.forEach(input => input.addEventListener('input', calculate));
 
 
-        // [2] 이미지 저장 로직 (A4 정렬 최적화)
+        // [2] 이미지 저장 & 그래프 생성 로직
         const downloadReport = async () => {
             const original = document.getElementById("report-container");
             if (!original) return;
 
             const clone = original.cloneNode(true);
 
-            // A4 규격 및 스타일 (여백 조절)
+            // A4 규격 및 스타일 (Footer 삭제로 공간 확보)
             Object.assign(clone.style, {
                 width: "794px",
-                height: "1123px", // minHeight 대신 height로 고정하여 비율 유지
+                height: "1123px", // A4 높이 고정
                 position: "absolute",
                 top: "-9999px",
                 left: "-9999px",
                 backgroundColor: "white",
-                padding: "50px 60px", // 상하 50, 좌우 60 (안정감 있는 여백)
+                padding: "40px 50px", // 여백 최적화
                 margin: "0",
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: "space-between" // 콘텐츠를 위아래로 적절히 분배
+                boxSizing: "border-box"
             });
 
-            // 내부 그리드 및 섹션 재배치
+            // 1. 그리드 레이아웃 변경 (좌:정보 / 우:표+그래프)
             const grid = clone.querySelector("#content-grid");
             if(grid) {
-                // 그리드 셋업
                 grid.classList.remove("grid-cols-1", "gap-6");
-                grid.classList.add("grid-cols-2", "gap-12"); // 좌우 간격을 12(약 48px)로 넓혀 시원하게
-                grid.style.flexGrow = "1"; // 본문이 남는 공간을 차지하도록
+                grid.classList.add("grid-cols-2", "gap-10");
+                grid.style.height = "100%"; // 높이 꽉 채우기
                 
-                // 섹션 위치 지정
-                const sec1 = clone.querySelector("#sec-1"); // 예배 정보 (좌측 상단)
-                const sec2 = clone.querySelector("#sec-2"); // 출석 현황 (우측 전체)
-                const sec3 = clone.querySelector("#sec-3"); // 상세 보고 (좌측 하단)
+                const sec1 = clone.querySelector("#sec-1"); // 예배 정보
+                const sec2 = clone.querySelector("#sec-2"); // 출석 현황
+                const sec3 = clone.querySelector("#sec-3"); // 상세 보고
+                const chartInput = clone.querySelector("#chart-input-area"); // 입력창 -> 그래프로 변환
 
+                // 위치 배치
                 if(sec1) {
                     sec1.style.gridColumn = "1";
                     sec1.style.gridRow = "1";
-                    sec1.style.marginBottom = "40px"; // 섹션 1과 3 사이 간격 확보
                 }
-                
                 if(sec3) {
                     sec3.style.gridColumn = "1";
                     sec3.style.gridRow = "2";
-                    // 상세보고 textarea가 공간을 꽉 채우도록 스타일 조정
-                    const textareas = sec3.querySelectorAll("textarea");
-                    textareas.forEach(t => t.style.height = "100%"); 
+                    // 상세보고 영역 늘리기
+                    sec3.style.height = "100%";
+                    sec3.querySelectorAll("textarea").forEach(t => t.style.height = "100%");
                 }
-
                 if(sec2) {
                     sec2.style.gridColumn = "2";
-                    sec2.style.gridRow = "1 / span 2"; // 우측 전체 사용
-                    sec2.style.height = "100%";
+                    sec2.style.gridRow = "1 / span 2"; // 우측 전체
                     sec2.style.display = "flex";
                     sec2.style.flexDirection = "column";
-                    // 총 출석 박스를 아래로 밀어넣기 위해 중간에 빈 공간(margin) 활용
-                    const totalBox = sec2.lastElementChild; // 총 출석 박스
-                    if(totalBox) totalBox.style.marginTop = "auto"; 
+                }
+
+                // 2. ★★★ 그래프 생성 마법 ★★★
+                if(chartInput) {
+                    // 입력값 가져오기 (원본 DOM에서 가져와야 함)
+                    const w3 = Number(document.getElementById('week-3').value) || 0;
+                    const w2 = Number(document.getElementById('week-2').value) || 0;
+                    const w1 = Number(document.getElementById('week-1').value) || 0;
+                    const w0 = Number(document.getElementById('week-0').value) || 0; // 이번주(자동계산)
+
+                    const data = [w3, w2, w1, w0];
+                    const maxVal = Math.max(...data, 10); // 최대값 (최소 10)
+
+                    // 입력창 UI 삭제하고 그 자리에 그래프 그리기
+                    chartInput.innerHTML = "";
+                    chartInput.className = "mt-auto pt-4 border-t border-slate-200"; // 스타일 변경
+
+                    // 그래프 제목
+                    const chartTitle = document.createElement("div");
+                    chartTitle.className = "text-sm font-bold text-slate-600 mb-2";
+                    chartTitle.innerText = "최근 4주 출석 추이";
+                    chartInput.appendChild(chartTitle);
+
+                    // 바 차트 컨테이너
+                    const chartBody = document.createElement("div");
+                    chartBody.className = "flex justify-between items-end h-32 px-2 gap-4"; // 높이 128px
+                    
+                    const labels = ["3주전", "2주전", "지난주", "이번주"];
+                    const colors = ["bg-slate-300", "bg-slate-300", "bg-slate-400", "bg-blue-600"];
+
+                    data.forEach((val, i) => {
+                        // 막대 + 라벨 래퍼
+                        const barWrapper = document.createElement("div");
+                        barWrapper.className = "flex flex-col items-center flex-1";
+
+                        // 값 라벨
+                        const valLabel = document.createElement("span");
+                        valLabel.className = `text-xs font-bold mb-1 ${i===3 ? 'text-blue-600':'text-slate-500'}`;
+                        valLabel.innerText = val + "명";
+
+                        // 막대 (높이 % 계산)
+                        const bar = document.createElement("div");
+                        const heightPct = Math.round((val / maxVal) * 100);
+                        bar.className = `w-full rounded-t-md ${colors[i]}`;
+                        bar.style.height = `${heightPct}%`;
+                        bar.style.minHeight = "4px"; // 0이어도 살짝 보이게
+
+                        // 하단 라벨 (3주전 등)
+                        const dateLabel = document.createElement("span");
+                        dateLabel.className = "text-xs text-slate-500 mt-1 font-medium";
+                        dateLabel.innerText = labels[i];
+
+                        barWrapper.appendChild(valLabel);
+                        barWrapper.appendChild(bar);
+                        barWrapper.appendChild(dateLabel);
+                        chartBody.appendChild(barWrapper);
+                    });
+
+                    chartInput.appendChild(chartBody);
+                    
+                    // 그래프를 오른쪽 섹션 맨 아래로 이동
+                    sec2.appendChild(chartInput);
                 }
             }
 
-            // 하단 문구 위치 정리
-            const footer = clone.querySelector("#footer-msg");
-            if(footer) {
-                footer.style.marginTop = "0";
-                footer.style.paddingBottom = "20px";
-            }
-
-            // Input -> Text 변환
+            // 3. Input -> Text 변환 (글자 잘림 방지)
             const originalInputs = original.querySelectorAll("input, textarea");
             const cloneInputs = clone.querySelectorAll("input, textarea");
             
             originalInputs.forEach((orgInput, index) => {
+                // 그래프 입력창은 위에서 이미 변환했으므로 건너뜀
+                if(orgInput.closest("#chart-input-area")) return;
+
                 const cloneInput = cloneInputs[index];
+                if(!cloneInput) return; // 없을 경우 패스
+
                 const value = orgInput.value;
                 const parent = cloneInput.parentElement;
                 
@@ -269,12 +338,10 @@
                 textDiv.className = "print-text";
                 textDiv.style.textAlign = orgInput.classList.contains("text-center") ? "center" : "left";
                 
-                // 줄바꿈 처리 (textarea의 경우)
                 if(orgInput.tagName === "TEXTAREA") {
-                    textDiv.style.whiteSpace = "pre-wrap"; // 줄바꿈 반영
-                    textDiv.style.height = "100%"; // 높이 꽉 채우기
+                    textDiv.style.whiteSpace = "pre-wrap"; 
+                    textDiv.style.height = "100%";
                 }
-
                 if(orgInput.classList.contains("border-b")) {
                     textDiv.style.borderBottom = "1px solid #cbd5e1";
                 }
@@ -287,10 +354,10 @@
 
             try {
                 const canvas = await html2canvas(clone, {
-                    scale: 2, // 고해상도
+                    scale: 2,
                     useCORS: true,
                     windowWidth: 794,
-                    height: 1123, // 캔버스 높이 강제
+                    height: 1123,
                     scrollY: 0
                 });
 
