@@ -1,136 +1,215 @@
-<div id="report-container" class="bg-white p-8 mx-auto max-w-2xl">
-  
-  <header class="mb-8">
-    <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight mb-3">주일 예배 보고서</h1>
-    <div class="text-lg text-slate-500 font-medium">타슈켄트 한인교회</div>
-    <div class="mt-4 border-b-4 border-slate-800 w-full"></div>
-  </header>
-
-  <div class="content-wrapper grid grid-cols-1 gap-10">
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>타슈켄트 한인교회 예배보고서</title>
     
-    <div class="left-col space-y-8">
-      
-      <section>
-        <h2 class="text-2xl font-bold text-slate-800 border-b-2 border-slate-800 pb-3 mb-5">
-          Ⅰ. 예배 정보
-        </h2>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        /* 모바일에서 입력할 때 쾌적하게 */
+        input, textarea { font-family: 'Noto Sans KR', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen pb-20">
+
+    <div id="report-container" class="bg-white p-6 mx-auto max-w-lg shadow-lg my-4 md:my-10 relative">
         
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-bold text-slate-600 mb-1">날짜</label>
-              <input type="date" value="2025-12-23" 
-                     class="w-full text-lg font-medium border-b border-slate-300 focus:outline-none focus:border-blue-500 py-1" />
+        <header class="mb-6 border-b-4 border-slate-800 pb-4">
+            <h1 class="text-3xl font-black text-slate-900 tracking-tight">주일 예배 보고서</h1>
+            <p class="text-slate-500 font-bold mt-1">TASHKENT KOREAN CHURCH</p>
+        </header>
+
+        <div id="content-grid" class="grid grid-cols-1 gap-8">
+            
+            <div class="space-y-8">
+                
+                <section>
+                    <h2 class="text-xl font-bold text-blue-900 border-b border-blue-900 pb-2 mb-4">
+                        Ⅰ. 예배 정보
+                    </h2>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">날짜</label>
+                                <input type="date" value="2025-12-23" class="w-full border-b border-slate-300 py-1 font-bold text-slate-800 focus:outline-none focus:border-blue-500 bg-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">설교자</label>
+                                <input type="text" value="이수정 담임목사" class="w-full border-b border-slate-300 py-1 font-bold text-slate-800 focus:outline-none focus:border-blue-500 bg-transparent">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">성경 본문</label>
+                            <input type="text" placeholder="예: 요한복음 3:16" class="w-full border-b border-slate-300 py-1 font-medium text-slate-800 focus:outline-none focus:border-blue-500 bg-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">설교 제목</label>
+                            <input type="text" placeholder="제목을 입력하세요" class="w-full border-b border-slate-300 py-1 font-medium text-slate-800 focus:outline-none focus:border-blue-500 bg-transparent">
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-bold text-blue-900 border-b border-blue-900 pb-2 mb-4">
+                        Ⅲ. 상세 보고
+                    </h2>
+                    <div class="space-y-3">
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <label class="font-bold text-slate-700 w-20 pt-1">새가족</label>
+                            <textarea rows="2" class="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm resize-none focus:outline-none focus:border-blue-500"></textarea>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <label class="font-bold text-slate-700 w-20 pt-1">방문자</label>
+                            <textarea rows="2" class="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm resize-none focus:outline-none focus:border-blue-500"></textarea>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <label class="font-bold text-slate-700 w-20 pt-1">특이사항</label>
+                            <textarea rows="3" class="flex-1 bg-slate-50 border border-slate-200 rounded p-2 text-sm resize-none focus:outline-none focus:border-blue-500"></textarea>
+                        </div>
+                    </div>
+                </section>
             </div>
+
             <div>
-              <label class="block text-sm font-bold text-slate-600 mb-1">설교자</label>
-              <input type="text" value="이수정 담임목사" 
-                     class="w-full text-lg font-medium border-b border-slate-300 focus:outline-none focus:border-blue-500 py-1" />
+                <section>
+                    <h2 class="text-xl font-bold text-blue-900 border-b border-blue-900 pb-2 mb-4">
+                        Ⅱ. 출석 현황
+                    </h2>
+
+                    <h3 class="text-sm font-bold text-slate-600 mb-2">1. 대예배</h3>
+                    <div class="border border-slate-300 rounded overflow-hidden mb-6">
+                        <table class="w-full text-center text-sm">
+                            <thead class="bg-slate-100 text-slate-700 font-bold">
+                                <tr>
+                                    <th class="py-2 border-r border-b">구분</th>
+                                    <th class="py-2 border-r border-b">남</th>
+                                    <th class="py-2 border-r border-b">여</th>
+                                    <th class="py-2 border-b bg-slate-200">소계</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="py-2 border-r border-b font-medium">1부</td>
+                                    <td class="border-r border-b"><input type="number" class="w-full text-center py-2 outline-none" placeholder="0"></td>
+                                    <td class="border-r border-b"><input type="number" class="w-full text-center py-2 outline-none" placeholder="0"></td>
+                                    <td class="border-b font-bold text-blue-900 bg-slate-50">0</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 border-r font-medium">2부</td>
+                                    <td class="border-r"><input type="number" class="w-full text-center py-2 outline-none" placeholder="0"></td>
+                                    <td class="border-r"><input type="number" class="w-full text-center py-2 outline-none" placeholder="0"></td>
+                                    <td class="font-bold text-blue-900 bg-slate-50">0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="bg-slate-50 p-2 text-right border-t border-slate-300">
+                            <span class="text-xs font-bold text-slate-500 mr-2">대예배 합계:</span>
+                            <span class="font-bold text-lg text-blue-900">0 명</span>
+                        </div>
+                    </div>
+
+                    <h3 class="text-sm font-bold text-slate-600 mb-2">2. 교육부서</h3>
+                    <div class="grid grid-cols-4 border border-slate-300 text-center text-sm rounded overflow-hidden mb-6">
+                        <div class="bg-slate-100 p-2 font-bold border-r border-b">청년</div>
+                        <div class="bg-slate-100 p-2 font-bold border-r border-b">중고등</div>
+                        <div class="bg-slate-100 p-2 font-bold border-r border-b">유초등</div>
+                        <div class="bg-slate-100 p-2 font-bold border-b">유아</div>
+                        
+                        <div class="border-r"><input type="number" class="w-full text-center py-3 outline-none" placeholder="0"></div>
+                        <div class="border-r"><input type="number" class="w-full text-center py-3 outline-none" placeholder="0"></div>
+                        <div class="border-r"><input type="number" class="w-full text-center py-3 outline-none" placeholder="0"></div>
+                        <div><input type="number" class="w-full text-center py-3 outline-none" placeholder="0"></div>
+                    </div>
+
+                    <div class="bg-blue-900 text-white rounded-lg p-4 text-right shadow-md">
+                        <span class="text-lg font-medium mr-4">총 출석 인원</span>
+                        <span class="text-3xl font-black">0 명</span>
+                    </div>
+                </section>
             </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-bold text-slate-600 mb-1">성경 본문</label>
-            <input type="text" placeholder="예: 요한복음 3:16" 
-                   class="w-full text-lg font-medium border-b border-slate-300 focus:outline-none focus:border-blue-500 py-1" />
-          </div>
-
-          <div>
-            <label class="block text-sm font-bold text-slate-600 mb-1">설교 제목</label>
-            <input type="text" placeholder="제목을 입력하세요" 
-                   class="w-full text-lg font-medium border-b border-slate-300 focus:outline-none focus:border-blue-500 py-1" />
-          </div>
         </div>
-      </section>
 
-      <section>
-        <h2 class="text-2xl font-bold text-slate-800 border-b-2 border-slate-800 pb-3 mb-5">
-          Ⅲ. 상세 보고
-        </h2>
-        <div class="space-y-4">
-          <div class="flex items-start gap-4">
-            <label class="w-20 font-bold text-slate-700 pt-1 shrink-0">새가족</label>
-            <textarea rows="2" class="w-full bg-slate-50 rounded p-2 text-slate-800 resize-none"></textarea>
-          </div>
-          <div class="flex items-start gap-4">
-            <label class="w-20 font-bold text-slate-700 pt-1 shrink-0">방문자</label>
-            <textarea rows="2" class="w-full bg-slate-50 rounded p-2 text-slate-800 resize-none"></textarea>
-          </div>
-          <div class="flex items-start gap-4">
-            <label class="w-20 font-bold text-slate-700 pt-1 shrink-0">특이사항</label>
-            <textarea rows="3" class="w-full bg-slate-50 rounded p-2 text-slate-800 resize-none"></textarea>
-          </div>
+        <div class="mt-10 text-right pt-4 border-t border-dashed border-slate-300">
+            <p class="text-lg font-bold text-slate-800">위와 같이 보고합니다.</p>
+            <div class="mt-6 text-slate-500">
+                <span class="mr-2">작성자 :</span>
+                <span class="inline-block w-40 border-b border-slate-400"></span>
+                <span>(인)</span>
+            </div>
         </div>
-      </section>
     </div>
 
-    <div class="right-col">
-      <section>
-        <h2 class="text-2xl font-bold text-slate-800 border-b-2 border-slate-800 pb-3 mb-5">
-          Ⅱ. 출석 현황
-        </h2>
-
-        <h3 class="font-bold text-lg text-slate-700 mb-2">1. 대예배</h3>
-        <table class="w-full text-center border-collapse mb-6">
-          <thead>
-            <tr class="bg-slate-100 text-slate-700">
-              <th class="border p-2 w-1/6">구분</th>
-              <th class="border p-2">남</th>
-              <th class="border p-2">여</th>
-              <th class="border p-2 w-1/6 font-bold bg-slate-200">소계</th>
-            </tr>
-          </thead>
-          <tbody class="text-lg">
-            <tr>
-              <td class="border p-3 font-medium">1부</td>
-              <td class="border p-3"><input type="number" class="w-full text-center outline-none" placeholder="0"></td>
-              <td class="border p-3"><input type="number" class="w-full text-center outline-none" placeholder="0"></td>
-              <td class="border p-3 font-bold bg-slate-50 text-blue-900">0</td>
-            </tr>
-            <tr>
-              <td class="border p-3 font-medium">2부</td>
-              <td class="border p-3"><input type="number" class="w-full text-center outline-none" placeholder="0"></td>
-              <td class="border p-3"><input type="number" class="w-full text-center outline-none" placeholder="0"></td>
-              <td class="border p-3 font-bold bg-slate-50 text-blue-900">0</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="3" class="border p-3 font-bold text-right bg-slate-50">대예배 합계 :</td>
-              <td class="border p-3 font-bold text-xl text-blue-900">0명</td>
-            </tr>
-          </tfoot>
-        </table>
-
-        <h3 class="font-bold text-lg text-slate-700 mb-2">2. 교육부서</h3>
-        <div class="grid grid-cols-4 border border-slate-300 text-center mb-8">
-          <div class="bg-slate-100 p-2 font-bold border-r border-b">청년부</div>
-          <div class="bg-slate-100 p-2 font-bold border-r border-b">중고등부</div>
-          <div class="bg-slate-100 p-2 font-bold border-r border-b">유초등부</div>
-          <div class="bg-slate-100 p-2 font-bold border-b">유아부</div>
-          
-          <div class="p-3 border-r"><input type="number" class="w-full text-center outline-none" placeholder="0"></div>
-          <div class="p-3 border-r"><input type="number" class="w-full text-center outline-none" placeholder="0"></div>
-          <div class="p-3 border-r"><input type="number" class="w-full text-center outline-none" placeholder="0"></div>
-          <div class="p-3"><input type="number" class="w-full text-center outline-none" placeholder="0"></div>
-        </div>
-
-        <div class="bg-blue-50 rounded-lg p-6 text-right">
-          <span class="text-xl font-bold text-slate-700 mr-4">총 출석:</span>
-          <span class="text-4xl font-black text-blue-900">0 명</span>
-        </div>
-      </section>
+    <div class="fixed bottom-0 left-0 w-full p-4 bg-white/90 backdrop-blur border-t border-slate-200 text-center">
+        <button onclick="downloadReport()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg text-lg transition-transform active:scale-95 flex items-center justify-center mx-auto gap-2">
+            <span>📷 이미지로 저장하기</span>
+        </button>
     </div>
 
-  </div>
+    <script>
+        const downloadReport = async () => {
+            const original = document.getElementById("report-container");
+            if (!original) return;
 
-  <div class="mt-12 text-right">
-    <p class="text-xl font-bold text-slate-800">위와 같이 보고합니다.</p>
-    <div class="mt-8 text-lg text-slate-500">
-      <span class="mr-2">작성자 :</span>
-      <span class="inline-block w-48 border-b border-slate-400"></span>
-      <span>(인)</span>
-    </div>
-  </div>
+            // 1. 복제본 생성
+            const clone = original.cloneNode(true);
 
-</div>
+            // 2. 복제본 스타일 강제 주입 (A4 규격)
+            // A4 가로 794px 기준
+            Object.assign(clone.style, {
+                width: "794px",
+                minHeight: "1123px", // A4 높이
+                position: "absolute",
+                top: "-9999px",
+                left: "-9999px",
+                backgroundColor: "white",
+                padding: "40px", // 인쇄용 여백
+                margin: "0",
+                transform: "scale(1)" // 스케일 초기화
+            });
+
+            // 3. 레이아웃 변형 (모바일 1단 -> PC 2단)
+            // 'content-grid' 아이디를 가진 요소를 찾아서 클래스 교체
+            const grid = clone.querySelector("#content-grid");
+            if(grid) {
+                grid.classList.remove("grid-cols-1"); // 모바일용 제거
+                grid.classList.add("grid-cols-2");    // A4용 2단 추가
+            }
+
+            // 4. DOM에 임시 추가
+            document.body.appendChild(clone);
+
+            try {
+                // 5. 캡처 실행
+                const canvas = await html2canvas(clone, {
+                    scale: 2, // 고화질
+                    useCORS: true,
+                    logging: false,
+                    windowWidth: 794
+                });
+
+                // 6. 다운로드 트리거
+                const link = document.createElement("a");
+                link.download = `예배보고서_${new Date().toISOString().split('T')[0]}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+
+            } catch (error) {
+                console.error("캡처 에러:", error);
+                alert("저장 중 문제가 발생했습니다.");
+            } finally {
+                // 7. 복제본 삭제
+                document.body.removeChild(clone);
+            }
+        };
+    </script>
+</body>
+</html>
