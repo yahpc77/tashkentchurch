@@ -14,14 +14,22 @@
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
         
-        /* 인쇄(캡처) 전용 텍스트 스타일 */
+        /* [업데이트] 인쇄(캡처) 전용 텍스트 스타일: 보기 좋은 줄맞춤 적용 */
         .print-text {
-            font-size: 14px; color: #334155; font-weight: 600; line-height: 1.6;
-            white-space: pre-wrap; /* 줄바꿈 유지 */
+            font-size: 14px; 
+            color: #334155; 
+            font-weight: 500; /* 본문 가독성을 위해 굵기 살짝 조정 */
+            line-height: 1.75; /* 숨쉬기 편한 쾌적한 줄간격 */
+            white-space: pre-wrap; /* 사용자의 의도적 엔터 유지 */
+            word-break: keep-all; /* 한국어 단어가 중간에 잘리지 않도록 보호 */
+            text-align: justify; /* 신문/책 처럼 양쪽 끝단을 완벽하게 맞춤 */
+            text-justify: inter-word;
         }
         
-        /* 캡처 시 그래프 바 애니메이션 제거 (즉시 렌더링) */
-        .chart-bar { transition: none !important; }
+        /* 캡처 시 그래프 바 애니메이션 제거 (즉시 렌더링) 및 캡처 전용 스타일 강제 */
+        #render-target .chart-bar { 
+            transition: none !important; 
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen pb-40">
@@ -73,7 +81,7 @@
             <div class="space-y-3">
                 <textarea id="in-new" rows="2" placeholder="새가족 내용" class="w-full bg-slate-50 border border-slate-200 rounded p-3 text-sm resize-none"></textarea>
                 <textarea id="in-visit" rows="3" placeholder="방문자 내용" class="w-full bg-slate-50 border border-slate-200 rounded p-3 text-sm resize-none"></textarea>
-                <textarea id="in-note" rows="3" placeholder="특이사항 내용" class="w-full bg-slate-50 border border-slate-200 rounded p-3 text-sm resize-none"></textarea>
+                <textarea id="in-note" rows="4" placeholder="특이사항 내용" class="w-full bg-slate-50 border border-slate-200 rounded p-3 text-sm resize-none"></textarea>
             </div>
         </section>
 
@@ -102,7 +110,7 @@
     </div>
 
 
-    <div id="render-target" style="position:fixed; top:-9999px; left:-9999px; width:794px; height:1123px; background:white; padding:60px 50px; box-sizing:border-box;">
+    <div id="render-target" style="position:fixed; top:-9999px; left:-9999px; width:794px; height:1123px; background:white; padding:60px 50px; box-sizing:border-box; visibility:hidden;">
         
         <header class="flex justify-between items-end border-b-4 border-slate-900 pb-4 mb-8">
             <div>
@@ -136,7 +144,7 @@
                 <div class="flex-grow flex flex-col">
                     <h2 class="text-lg font-bold text-blue-900 border-b-2 border-blue-900 pb-2 mb-4">Ⅲ. 상세 보고</h2>
                     
-                    <div class="space-y-6 flex-grow">
+                    <div class="space-y-6 flex-grow flex flex-col">
                         <div>
                             <span class="block text-xs font-bold text-slate-400 mb-1">새가족</span>
                             <div id="out-new" class="print-text bg-slate-50 p-3 rounded-lg min-h-[80px]"></div>
@@ -237,7 +245,6 @@
         const inputs = document.querySelectorAll('.calc-input');
         
         function calculate() {
-            // 입력값 가져오기
             const m1 = Number(document.getElementById('m1').value) || 0;
             const f1 = Number(document.getElementById('f1').value) || 0;
             const m2 = Number(document.getElementById('m2').value) || 0;
@@ -247,7 +254,6 @@
             const sub2 = m2 + f2;
             const mainTotal = sub1 + sub2;
 
-            // 교육부서 합계
             let eduTotal = 0;
             const eduInputs = document.querySelectorAll('.edu-input');
             const eduValues = [];
@@ -259,14 +265,11 @@
 
             const grandTotal = mainTotal + eduTotal;
 
-            // UI 업데이트 (화면용)
             document.getElementById('ui-total').innerText = grandTotal + " 명";
 
-            // ★ 렌더링용 데이터 매핑 (A4 용) ★
             document.getElementById('out-m1').innerText = m1 || "-";
             document.getElementById('out-f1').innerText = f1 || "-";
             document.getElementById('out-sub1').innerText = sub1;
-            
             document.getElementById('out-m2').innerText = m2 || "-";
             document.getElementById('out-f2').innerText = f2 || "-";
             document.getElementById('out-sub2').innerText = sub2;
@@ -280,27 +283,34 @@
 
             document.getElementById('out-grandTotal').innerText = grandTotal;
 
-            return grandTotal; // 그래프 그리기를 위해 반환
+            return grandTotal; 
         }
 
         inputs.forEach(input => input.addEventListener('input', calculate));
 
+        // [업데이트] 텍스트 입력값 자동 조판 전처리 함수
+        function formatTextForPrint(text) {
+            if(!text) return "";
+            // 불필요하게 여러 번 친 엔터를 2번(문단 나눔)으로 압축하여 공간 낭비 방지
+            return text.trim().replace(/\n{3,}/g, '\n\n');
+        }
+
         // [2] 텍스트 정보 매핑
         function mapTextData() {
             const dateVal = document.getElementById('in-date').value;
-            // 날짜 포맷팅 (YYYY-MM-DD -> YYYY. MM. DD)
             document.getElementById('out-date').innerText = dateVal.replace(/-/g, '. ');
             document.getElementById('out-preacher').innerText = "설교: " + document.getElementById('in-preacher').value;
             
             document.getElementById('out-bible').innerText = document.getElementById('in-bible').value;
             document.getElementById('out-title').innerText = document.getElementById('in-title').value;
 
-            document.getElementById('out-new').innerText = document.getElementById('in-new').value;
-            document.getElementById('out-visit').innerText = document.getElementById('in-visit').value;
-            document.getElementById('out-note').innerText = document.getElementById('in-note').value;
+            // 서술형 텍스트에 폰트 정렬 및 공백 제거 로직 적용
+            document.getElementById('out-new').innerText = formatTextForPrint(document.getElementById('in-new').value);
+            document.getElementById('out-visit').innerText = formatTextForPrint(document.getElementById('in-visit').value);
+            document.getElementById('out-note').innerText = formatTextForPrint(document.getElementById('in-note').value);
         }
 
-        // [3] 그래프 그리기 (Visual Chart)
+        // [3] 그래프 그리기
         function drawChart(currentTotal) {
             const w3 = Number(document.getElementById('w-3').value) || 0;
             const w2 = Number(document.getElementById('w-2').value) || 0;
@@ -309,10 +319,11 @@
 
             const data = [w3, w2, w1, w0];
             const labels = ["3주전", "2주전", "지난주", "이번주"];
-            const maxVal = Math.max(...data, 10) * 1.1; // 최대값의 110%를 기준으로 잡음
+            
+            const maxVal = Math.max(...data, 1) * 1.1; 
 
             const container = document.getElementById('chart-container');
-            container.innerHTML = ""; // 초기화
+            container.innerHTML = ""; 
 
             data.forEach((val, i) => {
                 const heightPct = Math.round((val / maxVal) * 100);
@@ -321,9 +332,9 @@
                 const textColor = isToday ? "text-blue-700" : "text-slate-500";
 
                 const html = `
-                    <div class="flex flex-col items-center flex-1 h-full justify-end group">
+                    <div class="flex flex-col items-center flex-1 h-full justify-end group chart-bar-wrapper">
                         <span class="text-sm font-bold mb-1 ${textColor}">${val}</span>
-                        <div class="w-full ${barColor} rounded-t-md relative min-h-[4px]" style="height:${heightPct}%"></div>
+                        <div class="w-full ${barColor} rounded-t-md relative chart-bar" style="height:${heightPct}%; transition: none !important;"></div>
                         <span class="text-xs text-slate-400 mt-2 font-medium">${labels[i]}</span>
                     </div>
                 `;
@@ -331,19 +342,22 @@
             });
         }
 
-        // [4] 최종 실행 (맵핑 -> 그래프 -> 캡처)
+        // [4] 최종 실행
         const generateAndDownload = async () => {
-            // 1. 데이터 최신화
             const currentTotal = calculate();
             mapTextData();
             drawChart(currentTotal);
 
-            // 2. 캡처 대상
             const target = document.getElementById('render-target');
             
+            target.style.position = 'static'; 
+            target.style.top = '0';
+            target.style.left = '0';
+            target.style.visibility = 'visible'; 
+
             try {
                 const canvas = await html2canvas(target, {
-                    scale: 2, // 고화질
+                    scale: 2, 
                     useCORS: true,
                     width: 794,
                     height: 1123,
@@ -361,6 +375,11 @@
             } catch (err) {
                 console.error(err);
                 alert("저장 중 오류 발생!");
+            } finally {
+                target.style.position = 'fixed';
+                target.style.top = '-9999px';
+                target.style.left = '-9999px';
+                target.style.visibility = 'hidden'; 
             }
         };
     </script>
