@@ -14,15 +14,14 @@
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
         
-        /* [핵심 수정] 텍스트 찢어짐 완벽 방지 */
         .print-text {
             font-size: 14px; 
             color: #334155; 
             font-weight: 500; 
             line-height: 1.6;
-            white-space: pre-line; /* 다중 띄어쓰기는 1칸으로 압축, Enter(줄바꿈)는 살림 */
-            word-break: break-word; /* 좁은 공간에서 글씨가 찢어지지 않고 자연스럽게 밑으로 내려감 */
-            text-align: left !important; /* 무조건 왼쪽부터 채워서 빈 공간 발생 차단 */
+            white-space: pre-line; 
+            word-break: break-word; 
+            text-align: left !important; 
         }
         
         #render-target .chart-bar { 
@@ -209,7 +208,7 @@
 
                 <div class="mb-6">
                     <h3 class="font-bold text-slate-700 mb-4 pl-2 border-l-4 border-slate-300">📊 최근 4주 출석 추이</h3>
-                    <div id="chart-container" class="border border-slate-200 rounded-lg p-6 bg-slate-50 h-[180px] flex items-end justify-around gap-6 text-center">
+                    <div id="chart-container" class="relative border border-slate-200 rounded-lg p-6 pb-2 bg-slate-50 h-[180px] flex items-end justify-around gap-6 text-center">
                         </div>
                 </div>
 
@@ -227,7 +226,6 @@
             </div>
         </div>
     </div>
-
 
     <div class="fixed bottom-0 left-0 w-full p-4 bg-white/95 backdrop-blur border-t border-slate-200 text-center z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
         <button onclick="generateAndDownload()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg text-lg transition-transform active:scale-95 flex items-center justify-center mx-auto gap-2">
@@ -290,12 +288,12 @@
             document.getElementById('out-bible').innerText = document.getElementById('in-bible').value;
             document.getElementById('out-title').innerText = document.getElementById('in-title').value;
 
-            // 값만 그대로 복사 (CSS가 모든 정렬과 줄바꿈을 제어함)
             document.getElementById('out-new').innerText = document.getElementById('in-new').value;
             document.getElementById('out-visit').innerText = document.getElementById('in-visit').value;
             document.getElementById('out-note').innerText = document.getElementById('in-note').value;
         }
 
+        // [핵심 업그레이드] 시각적 증폭(Magnification) 및 자동 평균선 렌더링 엔진
         function drawChart(currentTotal) {
             const w3 = Number(document.getElementById('w-3').value) || 0;
             const w2 = Number(document.getElementById('w-2').value) || 0;
@@ -305,23 +303,43 @@
             const data = [w3, w2, w1, w0];
             const labels = ["3주전", "2주전", "지난주", "이번주"];
             
-            const maxVal = Math.max(...data, 1) * 1.1; 
+            // 1. 최대, 최소, 평균값 계산
+            const maxVal = Math.max(...data, 1);
+            const minVal = Math.min(...data);
+            const avgVal = Math.round(data.reduce((a, b) => a + b, 0) / 4);
+
+            // 2. 변동폭 극대화를 위해 기준점(바닥)을 최솟값보다 살짝 아래로 크롭
+            let baseVal = minVal - ((maxVal - minVal) * 0.5);
+            if (maxVal === minVal) baseVal = minVal * 0.8; // 변동이 아예 없을 때
+            if (baseVal < 0) baseVal = 0;
+
+            const range = (maxVal - baseVal) || 1; 
             const container = document.getElementById('chart-container');
             container.innerHTML = ""; 
 
+            // 3. 4주 평균선 렌더링 (차트 배경에 깔리는 점선)
+            const avgHeightPct = ((avgVal - baseVal) / range) * 80 + 15;
+            const avgLineHtml = `
+                <div style="position: absolute; bottom: ${avgHeightPct}%; left: 0; width: 100%; border-top: 2px dashed #94a3b8; z-index: 0;">
+                    <span style="position: absolute; right: 10px; top: -20px; font-size: 11px; font-weight: bold; color: #64748b; background: #f8fafc; padding: 0 4px;">4주 평균: ${avgVal}명</span>
+                </div>
+            `;
+            container.innerHTML += avgLineHtml;
+
+            // 4. 막대 렌더링 (차이 극대화)
             data.forEach((val, i) => {
-                const heightPct = Math.round((val / maxVal) * 100);
+                // 최소 높이 15% 보장, 최대 95%
+                let heightPct = ((val - baseVal) / range) * 80 + 15;
+                if (heightPct > 100) heightPct = 100;
+
                 const isToday = i === 3;
-                
-                // [핵심 수정] 외부 디자인 툴에 의존하지 않고, 절대 색상코드(Hex)를 직접 주입합니다.
-                // 이번주는 파란색(#2563eb), 과거 3주는 옅은 회색(#cbd5e1)입니다.
                 const absoluteColor = isToday ? "#2563eb" : "#cbd5e1"; 
                 const textColor = isToday ? "text-blue-700 font-black" : "text-slate-500 font-bold";
 
                 const html = `
-                    <div class="flex flex-col items-center flex-1 h-full justify-end group chart-bar-wrapper">
+                    <div class="flex flex-col items-center flex-1 h-full justify-end group chart-bar-wrapper" style="z-index: 10;">
                         <span class="text-sm mb-1 ${textColor}">${val}</span>
-                        <div class="w-full rounded-t-md relative chart-bar" style="height:${heightPct}%; background-color:${absoluteColor}; transition: none !important;"></div>
+                        <div class="w-full rounded-t-md relative chart-bar" style="height:${heightPct}%; background-color:${absoluteColor}; transition: none !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"></div>
                         <span class="text-xs ${isToday ? 'text-blue-700 font-bold' : 'text-slate-400 font-medium'} mt-2">${labels[i]}</span>
                     </div>
                 `;
