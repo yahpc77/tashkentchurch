@@ -3,28 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>V6.5 중고등부 실전 출석부 (영구등록판)</title>
+    <title>V7 중고등부 마스터 출석부</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
-        .member-btn { transition: transform 0.1s ease; }
-        .member-btn:active { transform: scale(0.9); }
-        .status-absent { background-color: #ffffff; color: #64748b; border: 1.5px solid #cbd5e1; }
-        .status-present { background-color: #4f46e5; color: white; border: 1.5px solid #312e81; font-weight: 900; box-shadow: 0 2px 4px rgba(79,70,229,0.3); }
-        .new-friend-btn { background-color: #f8fafc; color: #64748b; border: 2px dashed #94a3b8; }
-        .highlight-search { animation: pulse-border 1.2s infinite; background-color: #fde047 !important; color: #b45309 !important; font-weight: 900 !important; border: 2.5px solid #ea580c !important; transform: scale(1.05) !important; z-index: 10 !important; opacity: 1 !important; }
+        
+        .member-btn { transition: transform 0.1s ease; border-radius: 0.5rem; padding-top: 0.6rem; padding-bottom: 0.6rem; font-size: 14px; font-weight: 900; letter-spacing: -0.5px; }
+        .member-btn:active { transform: scale(0.92); }
+        .status-absent { background-color: #ffffff; color: #475569; border: 1.5px solid #cbd5e1; }
+        .status-present { background-color: #2563eb; color: white; border: 1.5px solid #1e3a8a; box-shadow: 0 4px 6px rgba(37,99,235,0.3); }
+        .add-btn { background-color: #eff6ff; color: #3b82f6; border: 2px dashed #93c5fd; font-size: 20px !important; }
+        
+        .highlight-search { animation: pulse-border 1.2s infinite; background-color: #fef08a !important; color: #b45309 !important; border: 2.5px solid #ea580c !important; transform: scale(1.05) !important; z-index: 10 !important; opacity: 1 !important; }
         @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(234, 88, 12, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); } }
         
+        .sticky-header { position: sticky; top: 0; z-index: 30; background: #f8fafc; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
         #report-modal, #report-view { display: none; }
         .a4-page { width: 210mm; min-height: 297mm; background: white; padding: 15mm 20mm; box-sizing: border-box; box-shadow: 0 10px 20px rgba(0,0,0,0.2); margin: 0 auto; }
-        .tkc-blue { color: #1e3a8a; } 
-        .tkc-blue-border { border-color: #1e3a8a; }
-        .tkc-light-blue { color: #3b82f6; } 
-        .tkc-light-bg { background-color: #f8fafc; }
+        .tkc-blue { color: #1e3a8a; } .tkc-blue-border { border-color: #1e3a8a; }
         
         @media print {
             body { background-color: white; margin: 0; padding: 0; }
@@ -36,62 +39,69 @@
 </head>
 <body class="flex flex-col h-screen">
 
-    <div id="main-app" class="flex flex-col h-full pb-16">
-        <div class="bg-white shadow-sm shrink-0 px-2 py-2 border-b-4 border-indigo-600 z-50">
-            <div class="flex justify-between items-center mb-1">
-                <h1 class="text-sm font-black text-indigo-800">🔥 중고등부 출석 V6.5 (자동등록)</h1>
-                <input type="date" id="today-date" class="text-xs font-bold text-gray-700 bg-gray-100 px-1 py-0.5 rounded border border-gray-300 outline-none">
+    <div id="main-app" class="flex flex-col h-full pb-20">
+        <div class="bg-white shadow-sm shrink-0 px-3 py-3 border-b-4 border-blue-700 z-50">
+            <div class="flex justify-between items-center mb-3">
+                <h1 class="text-lg font-black text-blue-900 tracking-tight">⛪ 중고등부 출석부 V7</h1>
+                <input type="date" id="today-date" class="text-sm font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded border border-gray-300 outline-none">
             </div>
-            <input type="text" id="search-input" onkeyup="searchMember()" placeholder="🔍 이름 검색 (새친구는 [+] 버튼)" class="w-full bg-slate-100 border-2 border-slate-300 text-sm font-black rounded p-1.5 outline-none focus:border-indigo-500 text-center text-indigo-900 mt-1">
-            <p id="db-status" class="text-[10px] font-bold text-orange-500 mt-1 text-center">🟡 시스템 가동 준비 중...</p>
+            
+            <div class="sticky-header">
+                <input type="text" id="search-input" onkeyup="filterMembers()" class="w-full border-2 border-blue-400 rounded-xl p-3 text-lg font-black shadow-sm focus:outline-none focus:border-blue-600 text-center text-blue-900 placeholder-blue-300" placeholder="🔍 이름 검색 (새친구는 [+] 버튼)">
+            </div>
+            <p id="db-status" class="text-[11px] font-bold text-orange-500 mt-2 text-center">🟡 데이터베이스 연동 중...</p>
         </div>
 
-        <div id="members-container" class="p-1.5 space-y-2 overflow-y-auto flex-1 bg-slate-50"></div>
+        <div id="members-container" class="p-2 space-y-3 overflow-y-auto flex-1 bg-slate-50"></div>
 
-        <div class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40 flex justify-between items-center shrink-0">
+        <div class="fixed bottom-0 left-0 w-full bg-white border-t-2 border-slate-200 p-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)] z-40 flex justify-between items-center shrink-0 pb-6">
             <div class="pl-2 leading-none flex-1">
-                <p class="text-[10px] font-bold text-gray-500 mb-0.5">중고등부 출석</p>
-                <p class="text-xl font-black text-indigo-600"><span id="count-display">0</span><span class="text-xs text-gray-600 font-bold"> 명</span></p>
-            </div>
-            <div class="flex gap-1.5">
-                <button onclick="submitRealAttendance()" class="bg-indigo-800 text-white px-4 py-2 rounded-lg font-black text-sm shadow-md active:scale-95">💾 마감저장</button>
-                <button onclick="openReportModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-black text-sm shadow-md active:scale-95">📑 예배일지</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-        <div class="bg-white w-full max-w-md rounded-xl p-5 shadow-2xl border-t-4 border-blue-600">
-            <h2 class="text-lg font-black text-blue-900 mb-3">📘 블루 에디션 보고서 작성</h2>
-            <div class="space-y-2 mb-4">
-                <input type="text" id="rep-preacher" placeholder="설교자 (예: 전도사님)" class="w-full border border-slate-300 rounded p-2 text-sm font-bold">
-                <input type="text" id="rep-scripture" placeholder="말씀 본문 (예: 창세기 1:1)" class="w-full border border-slate-300 rounded p-2 text-sm font-bold">
-                <input type="text" id="rep-title" placeholder="설교 제목" class="w-full border border-slate-300 rounded p-2 text-sm font-bold">
-                <input type="text" id="rep-pray" placeholder="기도자 / 찬양인도" class="w-full border border-slate-300 rounded p-2 text-sm font-bold">
-                <textarea id="rep-note" placeholder="중고등부 보고 사항, 새친구, 결석 사유 등..." class="w-full border border-slate-300 rounded p-2 text-sm font-bold h-24"></textarea>
+                <p class="text-xs font-bold text-gray-500 mb-1">현재 출석</p>
+                <p class="text-3xl font-black text-blue-700"><span id="count-display">0</span><span class="text-sm text-gray-600 font-bold ml-1">명</span></p>
             </div>
             <div class="flex gap-2">
-                <button onclick="closeReportModal()" class="flex-1 bg-slate-200 text-slate-600 py-2 rounded font-bold text-sm">취소</button>
-                <button onclick="generateReport()" class="flex-1 bg-blue-700 text-white py-2 rounded font-bold text-sm">A4 보고서 생성 🚀</button>
+                <button onclick="submitRealAttendance()" class="bg-blue-800 text-white px-5 py-3 rounded-xl font-black text-base shadow-lg active:scale-95 transition-transform">💾 마감저장</button>
+                <button onclick="openReportModal()" class="bg-indigo-600 text-white px-5 py-3 rounded-xl font-black text-base shadow-lg active:scale-95 transition-transform">📑 예배일지</button>
             </div>
         </div>
     </div>
 
-    <div id="report-view" class="bg-gray-200 min-h-screen py-8 overflow-y-auto">
-        <div class="text-center mb-4 no-print flex justify-center gap-2">
-            <button onclick="closeReportView()" class="bg-slate-700 text-white px-5 py-2 rounded-lg font-bold shadow-lg active:scale-95">🔙 출석부로 돌아가기</button>
-            <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold shadow-lg active:scale-95">🖨️ PDF 인쇄하기</button>
+    <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl border-t-8 border-indigo-600">
+            <h2 class="text-xl font-black text-indigo-900 mb-4 tracking-tight">📘 중고등부 보고서 작성</h2>
+            <div class="space-y-3 mb-6">
+                <input type="text" id="rep-preacher" placeholder="설교자" class="w-full border-2 border-slate-200 rounded-lg p-3 text-base font-bold bg-slate-50 focus:border-indigo-400 outline-none">
+                <input type="text" id="rep-scripture" placeholder="말씀 본문" class="w-full border-2 border-slate-200 rounded-lg p-3 text-base font-bold bg-slate-50 focus:border-indigo-400 outline-none">
+                <input type="text" id="rep-title" placeholder="설교 제목" class="w-full border-2 border-slate-200 rounded-lg p-3 text-base font-bold bg-slate-50 focus:border-indigo-400 outline-none">
+                <input type="text" id="rep-pray" placeholder="대표 기도 / 찬양 인도" class="w-full border-2 border-slate-200 rounded-lg p-3 text-base font-bold bg-slate-50 focus:border-indigo-400 outline-none">
+                <textarea id="rep-note" placeholder="특이사항 및 새친구 소개 등..." class="w-full border-2 border-slate-200 rounded-lg p-3 text-sm font-bold h-24 bg-slate-50 focus:border-indigo-400 outline-none resize-none"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeReportModal()" class="flex-1 bg-slate-200 text-slate-700 py-3 rounded-xl font-black text-base active:scale-95">취소</button>
+                <button onclick="generateReport()" class="flex-[2] bg-indigo-700 text-white py-3 rounded-xl font-black text-base shadow-lg active:scale-95">A4 보고서 띄우기 🚀</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="report-view" class="bg-gray-200 min-h-screen py-8 overflow-y-auto flex flex-col items-center">
+        <div class="text-center mb-6 no-print flex gap-3 w-[210mm]">
+            <button onclick="closeReportView()" class="flex-1 bg-slate-700 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg">🔙 돌아가기</button>
+            <button onclick="window.print()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg">🖨️ PDF 인쇄하기</button>
         </div>
         <div class="a4-page relative" id="a4-content"></div>
     </div>
 
     <script>
-        let db;
-        let allMembersData = {}; 
+        const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.database();
+        
         let presentSet = new Set(); 
+        let allMiddleData = {}; 
         let chartInstance = null;
 
-        function getSortedMiddleGroups(dataObj) {
+        // 💡 고3 -> 중1 정렬 로직 (완벽 기억)
+        function getSortedGroups(dataObj) {
             return Object.keys(dataObj)
                 .filter(k => k.startsWith("중고등부_"))
                 .sort((a, b) => {
@@ -100,122 +110,310 @@
                         if (name.includes("중3")) return 4; if (name.includes("중2")) return 5; if (name.includes("중1")) return 6;
                         return 99;
                     };
-                    let rankA = getRank(a), rankB = getRank(b);
-                    if (rankA === rankB) return a.localeCompare(b);
-                    return rankA - rankB;
+                    let rA = getRank(a), rB = getRank(b);
+                    return rA === rB ? a.localeCompare(b) : rA - rB;
                 });
         }
 
-        try {
-            document.getElementById('today-date').value = new Date().toISOString().split('T')[0];
-            const statusBox = document.getElementById('db-status');
-            statusBox.innerHTML = "🟡 파이어베이스 접속 시도 중...";
-
-            const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
-            if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-            db = firebase.database();
-
-            // 🔥 실시간 데이터 동기화 (DB가 바뀌면 앱 화면이 알아서 새로고침됨!)
-            db.ref('members').on('value', (snapshot) => {
-                let data = snapshot.val() || {};
-                if (data.members) data = data.members; 
-                
-                let processedData = {};
-                for(let key in data) {
-                    if(key.includes("중고등부_선생님") || key.includes("중고등부_교사")) continue; 
-                    
-                    if(key.startsWith("중고등부_")) {
-                        let rawStr = key.replace("중고등부_", ""); 
-                        let parts = rawStr.split(/[_\s]+/); 
-                        let teacherName = "";
-                        
-                        if (parts.length > 1 && !["선생님", "교사", "반"].includes(parts[1])) {
-                            teacherName = parts[1].replace(/선생님/g, "").replace(/교사/g, "").trim();
-                        }
-                        
-                        let arr = Array.isArray(data[key]) ? [...data[key]] : Object.values(data[key]);
-                        
-                        // 화면에 보여줄 때만 임시로 선생님 버튼 만들어줌 (DB 원본은 안 건드림!)
-                        if (teacherName) {
-                            let teacherFullName = teacherName + "(교사)";
-                            if (!arr.some(n => n.includes(teacherName))) arr.unshift(teacherFullName);
-                        }
-                        processedData[key] = arr;
-                    } else {
-                        processedData[key] = data[key];
+        function initApp() {
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0];
+            document.getElementById('today-date').value = dateStr;
+            
+            // 🔥 [버그 픽스 완료] 강력한 데이터 필터링 엔진
+            db.ref('members').on('value', (snap) => {
+                const data = snap.val() || {};
+                let processed = {};
+                for(let k in data) { 
+                    if(k.startsWith("중고등부_") && !k.includes("선생님") && !k.includes("교사")) {
+                        processed[k] = data[k] ? (Array.isArray(data[k]) ? [...data[k]] : Object.values(data[k])) : [];
                     }
                 }
-                allMembersData = processedData;
-                statusBox.innerHTML = "🟢 DB 연동 완료!";
-                statusBox.className = "text-[10px] font-bold text-green-600 mt-1 text-center";
+                allMiddleData = processed;
+                document.getElementById('db-status').innerHTML = "🟢 중고등부 명단 연동 완료!";
+                document.getElementById('db-status').className = "text-[11px] font-bold text-green-600 mt-2 text-center";
                 renderLists();
-            }, (error) => {
-                document.getElementById('db-status').innerHTML = "🚨 네트워크 오류: " + error.message;
             });
-        } catch(e) {
-            document.getElementById('db-status').innerHTML = "🚨 시스템 초기화 에러: " + e.message;
+
+            setupDatabaseRef(dateStr);
+            document.getElementById('today-date').addEventListener('change', (e) => setupDatabaseRef(e.target.value));
         }
+
+        function setupDatabaseRef(dateStr) {
+            db.ref(`attendance/${dateStr}/중고등부`).once('value').then((snapshot) => {
+                const data = snapshot.val() || {};
+                presentSet.clear();
+                if(data.groups) {
+                    Object.values(data.groups).forEach(g => { if(g.present) g.present.forEach(n => presentSet.add(n)); });
+                }
+                renderLists(); 
+            });
+        }
+
+        // 🚀 새 친구 영구 추가 (당일 바로 적용)
+        window.addNewFriend = function(groupKey, displayGroupName) {
+            const name = prompt(`[${displayGroupName}] 반에 새로 온 친구의 이름을 입력하세요:\n(파이어베이스에 영구 저장됩니다)`);
+            if(!name || name.trim() === "") return;
+            const cleanName = name.trim();
+
+            let targetArr = allMiddleData[groupKey] ? [...allMiddleData[groupKey]] : [];
+            if(!targetArr.includes(cleanName)) {
+                targetArr.push(cleanName);
+                targetArr.sort();
+                
+                db.ref(`members/${groupKey}`).set(targetArr).then(() => {
+                    presentSet.add(cleanName);
+                    alert(`🎉 [${cleanName}] 님이 ${displayGroupName} 반에 등록 및 출석체크 되었습니다!`);
+                    document.getElementById('search-input').value = ""; renderLists();
+                });
+            } else {
+                alert('이미 명단에 있는 이름입니다!');
+            }
+        };
 
         function renderLists() {
             const container = document.getElementById('members-container');
             container.innerHTML = '';
-            
-            const groupsToRender = getSortedMiddleGroups(allMembersData);
-            if(groupsToRender.length === 0) return;
+            const keyword = document.getElementById('search-input').value.trim();
+            const sortedGroups = getSortedGroups(allMiddleData);
 
-            groupsToRender.forEach(groupName => {
-                let membersArr = allMembersData[groupName] || [];
+            if(sortedGroups.length === 0) return;
+
+            sortedGroups.forEach(groupKey => {
+                let membersArr = allMiddleData[groupKey] || [];
+                let displayMembers = [...membersArr];
                 
-                let rawStr = groupName.replace("중고등부_", "");
-                let displayGroupName = rawStr.split(/[_\s]+/)[0]; 
-
-                const section = document.createElement('div');
-                section.className = "bg-white p-2 rounded-lg shadow-sm border border-gray-200 mb-2";
-                section.innerHTML = `<h3 class="text-sm font-black text-gray-800 mb-2 flex items-center gap-1.5 border-b pb-1"><span class="w-1.5 h-3 bg-indigo-500 rounded-full"></span>${displayGroupName}</h3>`;
-                
-                const leaders = membersArr.filter(n => typeof n === 'string' && (n.includes("(교사)") || n.includes("(부장)")));
-                const members = membersArr.filter(n => typeof n === 'string' && (!n.includes("(교사)") && !n.includes("(부장)")));
-
-                if (leaders.length > 0) {
-                    const leaderGrid = document.createElement('div');
-                    leaderGrid.className = "grid grid-cols-2 gap-1 mb-2"; 
-                    leaders.forEach(name => {
-                        const pureName = name.replace("(교사)", "").replace("(부장)", "").trim();
-                        const isLeader = name.includes("(교사)") || name.includes("(부장)");
-                        const prefix = isLeader ? "👨‍🏫 " : "✨ ";
-                        const roleText = name.includes("(부장)") ? "부장" : "교사";
-                        const isPresent = presentSet.has(name);
-                        
-                        const btn = document.createElement('button');
-                        btn.className = `member-btn w-full py-2 rounded text-center font-black text-[14px] tracking-tight leading-tight ${isPresent ? 'status-present' : 'bg-slate-100 text-slate-600 border border-slate-300'}`;
-                        btn.innerHTML = `${prefix}${pureName} <span class="text-[10px] font-normal text-gray-500">${isLeader ? roleText : ''}</span>`;
-                        btn.onclick = () => { presentSet.has(name) ? presentSet.delete(name) : presentSet.add(name); renderLists(); };
-                        leaderGrid.appendChild(btn);
-                    });
-                    section.appendChild(leaderGrid);
+                if (keyword) {
+                    displayMembers = membersArr.filter(m => m.includes(keyword));
+                    if (displayMembers.length === 0) return; 
                 }
 
-                const memberGrid = document.createElement('div');
-                memberGrid.className = "grid grid-cols-6 gap-1";
-                members.forEach(name => {
+                // '중고등부_고1_김선생님' -> '고1' 과 선생님 이름 추출
+                let rawStr = groupKey.replace("중고등부_", ""); 
+                let parts = rawStr.split(/[_\s]+/); 
+                let displayGroupName = parts[0]; 
+                
+                const section = document.createElement('div');
+                section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
+                section.innerHTML = `<h3 class="text-sm font-black text-gray-800 mb-2 flex items-center gap-2 border-b border-gray-100 pb-2"><span class="w-2 h-4 bg-indigo-500 rounded-full"></span>${displayGroupName} 반 <span class="text-xs text-indigo-400 font-bold ml-auto">${displayMembers.length}명</span></h3>`;
+                
+                const grid = document.createElement('div');
+                grid.className = "grid grid-cols-6 gap-1.5"; // 6칸 꽉 채우기
+
+                // 선생님과 학생 분리 렌더링 (👨‍🏫 아이콘 추가)
+                const leaders = displayMembers.filter(n => typeof n === 'string' && (n.includes("(교사)") || n.includes("(부장)")));
+                const students = displayMembers.filter(n => typeof n === 'string' && (!n.includes("(교사)") && !n.includes("(부장)")));
+
+                leaders.forEach(name => {
+                    const pureName = name.replace("(교사)", "").replace("(부장)", "").trim();
                     const isPresent = presentSet.has(name);
                     const btn = document.createElement('button');
-                    btn.className = `member-btn w-full py-1.5 rounded text-center font-black text-[13px] tracking-tight leading-tight ${isPresent ? 'status-present' : 'status-absent'}`;
-                    btn.innerHTML = name;
-                    btn.onclick = () => { presentSet.has(name) ? presentSet.delete(name) : presentSet.add(name); renderLists(); };
-                    memberGrid.appendChild(btn);
+                    btn.className = `member-btn w-full flex flex-col items-center justify-center tracking-tight leading-tight ${isPresent ? 'status-present' : 'bg-slate-100 text-slate-600 border border-slate-300'} ${keyword ? 'highlight-search' : ''}`;
+                    btn.innerHTML = `<span class="text-[10px] mb-0.5">👨‍🏫</span><span>${pureName}</span>`;
+                    btn.onclick = () => { if(presentSet.has(name)) presentSet.delete(name); else presentSet.add(name); renderLists(); };
+                    grid.appendChild(btn);
                 });
 
-                // 💡 [새친구 영구 등록 엔진] 
-                const addFriendBtn = document.createElement('button');
-                addFriendBtn.className = "member-btn w-full py-1.5 rounded text-center font-black text-[18px] new-friend-btn active:scale-90";
-                addFriendBtn.innerHTML = "+";
-                addFriendBtn.onclick = () => {
-                    const newName = prompt(`[${displayGroupName}] 반에 영구 등록할 친구 이름을 입력하세요:`);
-                    if(newName && newName.trim() !== "") {
-                        const cleanName = newName.trim();
-                        
-                        // DB에서 현재 진짜 명단을 불러옴
-                        const groupRef = db.ref('members/' + groupName);
-                        groupRef.once('value').then(snap => {
-                            let
+                students.forEach(name => {
+                    const isPresent = presentSet.has(name);
+                    const btn = document.createElement('button');
+                    btn.className = `member-btn w-full text-center tracking-tight leading-tight ${isPresent ? 'status-present' : 'status-absent'} ${keyword ? 'highlight-search' : ''}`;
+                    btn.innerHTML = name;
+                    btn.onclick = () => { if(presentSet.has(name)) presentSet.delete(name); else presentSet.add(name); renderLists(); };
+                    grid.appendChild(btn);
+                });
+
+                // 새친구 추가 [+] 버튼
+                if(!keyword) {
+                    const addBtn = document.createElement('button');
+                    addBtn.className = "member-btn w-full add-btn flex items-center justify-center active:scale-90";
+                    addBtn.innerHTML = "+";
+                    addBtn.onclick = () => addNewFriend(groupKey, displayGroupName);
+                    grid.appendChild(addBtn);
+                }
+
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+            
+            document.getElementById('count-display').innerText = presentSet.size;
+        }
+
+        function filterMembers() { renderLists(); }
+
+        window.submitRealAttendance = function() {
+            const targetDate = document.getElementById('today-date').value;
+            if (!confirm(`[중고등부] 총 ${presentSet.size}명\n이대로 DB에 저장하시겠습니까?`)) return;
+
+            let reportData = { totalPresent: presentSet.size, groups: {} };
+            const sortedGroups = getSortedGroups(allMiddleData);
+            
+            sortedGroups.forEach(groupKey => {
+                let presentList = [], absentList = [];
+                let membersArr = allMiddleData[groupKey] || [];
+                membersArr.forEach(name => {
+                    if (presentSet.has(name)) presentList.push(name); else absentList.push(name);
+                });
+                reportData.groups[groupKey] = { present: presentList, absent: absentList };
+            });
+
+            db.ref(`attendance/${targetDate}/중고등부`).set(reportData).then(() => alert("💾 중고등부 출석 데이터베이스 저장 완료!")).catch(e => alert("저장 실패: " + e.message));
+        }
+
+        window.openReportModal = function() { document.getElementById('report-modal').style.display = 'flex'; }
+        window.closeReportModal = function() { document.getElementById('report-modal').style.display = 'none'; }
+        
+        // 🚀 블루 에디션 A4 보고서
+        window.generateReport = function() {
+            const targetDate = document.getElementById('today-date').value.replace(/-/g, '. ');
+            const preacher = document.getElementById('rep-preacher').value || "미입력";
+            const scripture = document.getElementById('rep-scripture').value || "미입력";
+            const title = document.getElementById('rep-title').value || "미입력";
+            const pray = document.getElementById('rep-pray').value || "미입력";
+            const note = document.getElementById('rep-note').value || "특이사항 없음";
+            
+            let leaderCount = 0; let studentCount = 0;
+            presentSet.forEach(name => {
+                if(name.includes("(교사)") || name.includes("(부장)")) leaderCount++;
+                else studentCount++;
+            });
+
+            let groupRows = '';
+            const sortedGroups = getSortedGroups(allMiddleData);
+            sortedGroups.forEach(groupKey => {
+                let membersArr = allMiddleData[groupKey] || [];
+                if(membersArr.length === 0) return;
+                
+                const pList = membersArr.filter(n => presentSet.has(n)).sort();
+                const aList = membersArr.filter(n => !presentSet.has(n)).sort();
+                
+                if (pList.length > 0 || aList.length > 0) {
+                    let rawStr = groupKey.replace("중고등부_", "");
+                    let parts = rawStr.split(/[_\s]+/);
+                    let gName = parts[0]; 
+                    if (parts.length > 1 && !["선생님", "교사", "반"].includes(parts[1])) {
+                        gName += ` (${parts[1].replace(/선생님|교사/g, "").trim()})`; 
+                    }
+
+                    groupRows += `
+                        <tr class="border-b border-gray-200">
+                            <td class="py-3 px-3 text-center font-bold text-gray-700 bg-slate-50 text-sm border-r border-slate-200">${gName}</td>
+                            <td class="py-3 px-3 text-blue-600 font-bold text-sm leading-relaxed border-r border-slate-200 w-[45%]">${pList.join(', ') || '-'}</td>
+                            <td class="py-3 px-3 text-red-500 font-medium text-sm leading-relaxed">${aList.join(', ') || '-'}</td>
+                        </tr>
+                    `;
+                }
+            });
+
+            const a4Html = `
+                <div class="flex justify-between items-end border-b-4 tkc-blue-border pb-3 mb-8">
+                    <div>
+                        <h1 class="text-4xl font-black tkc-blue tracking-tighter">중고등부 예배 보고서</h1>
+                        <p class="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Tashkent Korean Church</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-black tkc-blue tracking-tight">${targetDate}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-8 mb-8">
+                    <div class="col-span-5 space-y-8">
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">📖 예배 정보</h2>
+                            <div class="space-y-4 bg-slate-50 p-5 rounded-xl border border-slate-200">
+                                <div><p class="text-xs text-indigo-500 font-bold mb-1">설교 / 찬양</p><p class="text-base font-bold text-slate-800">${preacher} / ${pray}</p></div>
+                                <div><p class="text-xs text-indigo-500 font-bold mb-1">성경 본문</p><p class="text-base font-black text-slate-800">${scripture}</p></div>
+                                <div><p class="text-xs text-indigo-500 font-bold mb-1">설교 제목</p><p class="text-lg font-black text-indigo-900 leading-snug">${title}</p></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">📝 보고 및 새친구</h2>
+                            <div class="bg-indigo-50 p-5 rounded-xl border border-indigo-100 min-h-[150px] text-sm font-bold text-slate-700 whitespace-pre-line leading-relaxed">
+                                ${note}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-span-7 space-y-8 flex flex-col">
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">👥 출석 현황</h2>
+                            <div class="flex justify-between items-center bg-indigo-900 p-6 rounded-xl shadow-lg mb-3">
+                                <div><p class="text-indigo-200 text-sm font-bold mb-1 uppercase">Total</p><p class="text-xl font-black text-white">중고등부 총 출석</p></div>
+                                <div class="text-right"><span class="text-5xl font-black text-white tracking-tighter">${presentSet.size}</span><span class="text-xl font-bold text-indigo-200 ml-1">명</span></div>
+                            </div>
+                            <div class="flex justify-between text-sm font-bold text-slate-600 px-2">
+                                <span>세부 구성</span>
+                                <span>교사 ${leaderCount}명 | 학생 ${studentCount}명</span>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex flex-col">
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">📊 최근 4주 출석 추이</h2>
+                            <div class="border-2 border-slate-200 rounded-xl p-5 shadow-sm flex-1 relative bg-white flex items-center justify-center" id="chart-container">
+                                <canvas id="trendChart" style="max-height: 200px; width: 100%;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">✅ 학년별 상세 명단</h2>
+                    <table class="w-full border-2 tkc-blue-border text-sm mb-6">
+                        <thead class="bg-slate-100 text-center font-black text-slate-600 border-b border-slate-300">
+                            <tr><th class="py-3 w-1/4 border-r border-slate-200">반 (구분)</th><th class="py-3 w-[45%] border-r border-slate-200">예배 참석 ✅</th><th class="py-3">예배 결석 ❌</th></tr>
+                        </thead>
+                        <tbody class="text-left font-bold text-slate-700">
+                            ${groupRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.getElementById('a4-content').innerHTML = a4Html;
+            closeReportModal();
+            document.getElementById('main-app').style.display = 'none';
+            document.getElementById('report-view').style.display = 'block';
+
+            if (typeof Chart === 'undefined') return;
+            try {
+                db.ref('attendance').orderByKey().limitToLast(4).once('value').then((snapshot) => {
+                    let historyData = []; let labels = [];
+                    if (snapshot.exists()) {
+                        snapshot.forEach(child => {
+                            labels.push(child.key.slice(5)); 
+                            historyData.push(child.val()['중고등부']?.totalPresent || 0);
+                        });
+                    }
+                    if(historyData.length === 0) { labels = ['이번주']; historyData = [presentSet.size]; }
+
+                    const ctx = document.getElementById('trendChart').getContext('2d');
+                    if (chartInstance) chartInstance.destroy(); 
+                    chartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: historyData,
+                                backgroundColor: historyData.map((_, i) => i === historyData.length - 1 ? '#4f46e5' : '#cbd5e1'),
+                                borderRadius: 6, barPercentage: 0.5
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false } }, 
+                            scales: { y: { beginAtZero: true, display: false }, x: { grid: { display: false }, ticks: { font: { size: 12, weight: 'bold' } } } },
+                            animation: { duration: 0 } 
+                        }
+                    });
+                });
+            } catch(e) { console.error("차트 에러:", e); }
+        }
+
+        window.closeReportView = function() {
+            document.getElementById('report-view').style.display = 'none';
+            document.getElementById('main-app').style.display = 'flex';
+        }
+        
+        window.onload = initApp;
+    </script>
+</body>
+</html>
