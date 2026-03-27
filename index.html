@@ -235,4 +235,299 @@
                     <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-2-youth"></td>
                 </tr>
                 <tr>
-                    <td class="
+                    <td class="border border-slate-800 py-4 bg-slate-50 font-bold">방문자</td>
+                    <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-1-vis"></td>
+                    <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-2-vis"></td>
+                </tr>
+                <tr class="bg-slate-200 font-bold">
+                    <td class="border border-slate-800 py-4">총 계</td>
+                    <td class="border border-slate-800 py-4 text-left pl-4 text-lg text-blue-900" id="td-1-total"></td>
+                    <td class="border border-slate-800 py-4 text-left pl-4 text-lg text-blue-900" id="td-2-total"></td>
+                </tr>
+                <tr>
+                    <td class="border border-slate-800 py-6 bg-slate-50 font-bold">결석자</td>
+                    <td colspan="2" class="border border-slate-800 p-4 text-left leading-relaxed whitespace-pre-wrap align-top text-sm" id="td-absent"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.database();
+        
+        let attendanceRef = null;
+        let currentMode = 1, att1 = [], vis1 = [], att2 = [], vis2 = [], searchTerm = "";
+        
+        // 🔥 파이어베이스 원본 데이터 저장소
+        let allMembersData = {}; 
+
+        // 💡 1/2부 대예배 화면에 띄울 순서 및 파이어베이스 실제 키값 매칭
+        // 형 스샷에 나온 정확한 이름들 사용!
+        const displayGroups = [
+            { key: '1부_직분자', label: '1부 예배 (직분자)' },
+            { key: '1부_등록교인', label: '1부 예배 (등록교인)' },
+            { key: '2부_직분자', label: '2부 예배 (직분자)' },
+            { key: '2부_등록교인', label: '2부 예배 (등록)' },
+            { key: '청년부', label: '청년부' },
+            { key: '미등록교인', label: '미등록 교인' },
+            { key: '미분류_교인', label: '미분류 교인' }
+        ];
+
+        function initApp() {
+            const today = new Date();
+            const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            document.getElementById('worship-date').value = dateStr; document.getElementById('in-date').value = dateStr;
+            
+            // 🔥 파이어베이스에서 실시간 명단 동기화 (에러 완벽 방어)
+            db.ref('members').on('value', (snap) => {
+                const data = snap.val() || {};
+                let processed = {};
+                for(let k in data) {
+                    // 데이터가 배열이든 객체든 무조건 안전하게 배열로 변환!
+                    processed[k] = data[k] ? (Array.isArray(data[k]) ? [...data[k]] : Object.values(data[k])) : [];
+                }
+                allMembersData = processed;
+                renderLists();
+            });
+
+            setupDatabaseRef(dateStr);
+            document.querySelectorAll('.calc-input').forEach(input => input.addEventListener('input', calculateTotals));
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('mode-btn-1').className = mode === 1 ? "flex-1 py-3 text-sm font-black rounded shadow-sm bg-white text-blue-600 transition-all" : "flex-1 py-3 text-sm font-bold rounded text-slate-500 transition-all";
+            document.getElementById('mode-btn-2').className = mode === 2 ? "flex-1 py-3 text-sm font-black rounded shadow-sm bg-white text-blue-600 transition-all" : "flex-1 py-3 text-sm font-bold rounded text-slate-500 transition-all";
+            document.getElementById('current-mode-label').innerText = mode + "부"; document.getElementById('list-mode-label').innerText = mode + "부";
+            renderLists();
+        }
+
+        function setupDatabaseRef(dateStr) {
+            if(attendanceRef) attendanceRef.off(); attendanceRef = db.ref('worship/' + dateStr);
+            attendanceRef.on('value', (snapshot) => {
+                document.getElementById('connection-status').innerHTML = `🟢 ${dateStr} 연동 완료`;
+                const data = snapshot.val() || {}; att1 = data.att1 || []; vis1 = data.vis1 || []; att2 = data.att2 || []; vis2 = data.vis2 || [];
+                renderLists(); 
+            });
+        }
+
+        function changeDate() { const d = document.getElementById('worship-date').value; document.getElementById('in-date').value = d; setupDatabaseRef(d); }
+        function filterMembers() { searchTerm = document.getElementById('search-input').value.trim(); renderLists(); }
+
+        // 🚀 [핵심 마법] 명단 자동 이동 & 영구 박제 엔진
+        window.moveOrAddMember = function(targetGroupKey, targetGroupLabel) {
+            const name = prompt(`[${targetGroupLabel}] 구역으로 이동/등록할 성도 이름을 입력하세요:\n(미분류/미등록 교인 명단에 있다면 자동으로 이사 옵니다!)`);
+            if(!name || name.trim() === "") return;
+            const cleanName = name.trim();
+
+            let updates = {};
+            
+            // 1. 파이어베이스 전체 폴더를 뒤져서 이 사람이 있으면 삭제 리스트에 올림
+            for(let key in allMembersData) {
+                if(key === targetGroupKey) continue; // 목표 방은 제외
+                let arr = allMembersData[key] || [];
+                if(arr.includes(cleanName)) {
+                    updates['members/' + key] = arr.filter(n => n !== cleanName);
+                }
+            }
+
+            // 2. 목표 방에 이 사람 추가
+            let targetArr = allMembersData[targetGroupKey] ? [...allMembersData[targetGroupKey]] : [];
+            if(!targetArr.includes(cleanName)) {
+                targetArr.push(cleanName);
+                targetArr.sort();
+            }
+            updates['members/' + targetGroupKey] = targetArr;
+
+            // 3. 파이어베이스에 업데이트 (원자적 처리: 에러 없이 한방에 처리됨)
+            db.ref().update(updates).then(() => {
+                // 이동 성공 시 당일 예배 출석도 자동으로 쾅!
+                if(currentMode === 1 && !att1.includes(cleanName)) { att1.push(cleanName); attendanceRef.update({ att1 }); }
+                else if(currentMode === 2 && !att2.includes(cleanName)) { att2.push(cleanName); attendanceRef.update({ att2 }); }
+                
+                alert(`🎉 [${cleanName}] 님이 ${targetGroupLabel}으로 완벽하게 이동(등록) 완료되었습니다!`);
+                document.getElementById('search-input').value = ""; searchTerm = "";
+            }).catch(e => alert("저장 실패: " + e.message));
+        };
+
+        function renderLists() {
+            const container = document.getElementById('grouped-list-container'); const attendedList = document.getElementById('attended-list');
+            container.innerHTML = ''; attendedList.innerHTML = '';
+            const curA = currentMode === 1 ? att1 : att2; const curV = currentMode === 1 ? vis1 : vis2;
+
+            displayGroups.forEach(group => {
+                let members = allMembersData[group.key] || [];
+                let pending = members.filter(m => !curA.includes(m)); 
+                
+                if (searchTerm) {
+                    pending = pending.filter(m => m.includes(searchTerm));
+                    if (pending.length === 0) return; 
+                }
+
+                const groupDiv = document.createElement('div'); groupDiv.className = "mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200";
+                groupDiv.innerHTML = `<h3 class="text-sm font-black text-blue-800 border-b-2 border-blue-100 pb-2 mb-3 flex justify-between items-end"><span>📍 ${group.label} <span class="text-xs text-slate-400 font-normal ml-1">(${pending.length}명 대기)</span></span></h3>`;
+                
+                const grid = document.createElement('div'); grid.className = "grid grid-cols-3 gap-2";
+                
+                pending.forEach(name => {
+                    const btn = document.createElement('button'); btn.className = "touch-btn w-full bg-slate-50 border border-slate-200 py-3 rounded-lg text-center font-bold text-slate-700 text-sm";
+                    btn.innerText = name; 
+                    btn.onclick = () => { 
+                        if(currentMode === 1) { att1.push(name); attendanceRef.update({ att1 }); } 
+                        else { att2.push(name); attendanceRef.update({ att2 }); } 
+                        document.getElementById('search-input').value = ""; searchTerm = ""; 
+                    };
+                    grid.appendChild(btn);
+                });
+
+                // [+] 버튼 탑재
+                if(!searchTerm) {
+                    const addBtn = document.createElement('button');
+                    addBtn.className = "touch-btn w-full add-btn py-2 rounded-lg text-center font-black text-2xl flex items-center justify-center";
+                    addBtn.innerHTML = "+";
+                    addBtn.onclick = () => moveOrAddMember(group.key, group.label);
+                    grid.appendChild(addBtn);
+                }
+
+                groupDiv.appendChild(grid); container.appendChild(groupDiv);
+            });
+            
+            curA.forEach(name => {
+                let li = document.createElement('li'); li.className = 'bg-slate-50 p-3 rounded-lg flex justify-between items-center border-l-4 border-l-green-500';
+                li.innerHTML = `<span class="font-bold text-slate-500 text-sm">✅ ${name}</span> <button class="text-xs text-red-500 font-bold px-2 py-1 rounded border border-red-200 bg-white">취소</button>`;
+                li.querySelector('button').onclick = () => { if(currentMode === 1) { att1 = att1.filter(m => m !== name); attendanceRef.update({ att1 }); } else { att2 = att2.filter(m => m !== name); attendanceRef.update({ att2 }); } };
+                attendedList.appendChild(li);
+            });
+            
+            curV.forEach(name => {
+                let li = document.createElement('li'); li.className = 'bg-orange-50 p-3 rounded-lg flex justify-between items-center border-l-4 border-l-orange-500';
+                const displayName = name.includes(' (기존)') ? `👋 ${name.replace(' (기존)', '')} <span class="text-xs font-normal text-slate-400">(기존방문)</span>` : `👋 ${name} <span class="text-xs font-normal text-blue-400">(새방문)</span>`;
+                li.innerHTML = `<span class="font-bold text-slate-700 text-sm">${displayName}</span> <button class="text-xs text-red-500 font-bold px-2 py-1 rounded border border-red-200 bg-white">삭제</button>`;
+                li.querySelector('button').onclick = () => { if(currentMode === 1) { vis1 = vis1.filter(v => v !== name); attendanceRef.update({ vis1 }); } else { vis2 = vis2.filter(v => v !== name); attendanceRef.update({ vis2 }); } };
+                attendedList.appendChild(li);
+            });
+            document.getElementById('att-current-count').innerText = curA.length + curV.length; calculateTotals();
+        }
+
+        function addVisitor(isNew) { 
+            const input = document.getElementById('visitor-input'); 
+            let name = input.value.trim(); 
+            if(name) { 
+                if(!isNew) name += " (기존)";
+                if(currentMode === 1) { vis1.push(name); attendanceRef.update({ vis1 }); } 
+                else { vis2.push(name); attendanceRef.update({ vis2 }); } 
+                input.value = ''; 
+            } 
+        }
+        
+        function resetCurrentModeAttendance() { if(confirm(`해당 부서 기록을 초기화하시겠습니까?`)) { if(currentMode === 1) attendanceRef.update({ att1: [], vis1: [] }); else attendanceRef.update({ att2: [], vis2: [] }); } }
+
+        function loadAbsentees() {
+            let allMembers = [];
+            displayGroups.forEach(g => {
+                let arr = allMembersData[g.key] || [];
+                allMembers.push(...arr);
+            });
+            let absentees = allMembers.filter(m => !att1.includes(m) && !att2.includes(m));
+            document.getElementById('in-absent').value = "*미출석자: " + absentees.join(", ");
+            alert(`총 ${absentees.length}명의 미출석자가 자동으로 입력되었습니다.`);
+        }
+
+        function calculateTotals() {
+            const c1 = att1.length + vis1.length, c2 = att2.length + vis2.length;
+            document.getElementById('ui-1bu').innerText = c1; document.getElementById('ui-2bu').innerText = c2;
+            let eduT = 0; const eduV = []; document.querySelectorAll('.edu-input').forEach(input => { const v = Number(input.value) || 0; eduT += v; eduV.push(v); });
+            const total = c1 + c2 + eduT; document.getElementById('ui-total').innerText = total + " 명";
+            document.getElementById('out-1bu').innerText = c1; document.getElementById('out-2bu').innerText = c2; document.getElementById('out-mainTotal').innerText = (c1 + c2) + " 명";
+            document.getElementById('out-edu1').innerText = eduV[0] || "-"; document.getElementById('out-edu2').innerText = eduV[1] || "-"; document.getElementById('out-edu3').innerText = eduV[2] || "-"; document.getElementById('out-edu4').innerText = eduV[3] || "-";
+            document.getElementById('out-grandTotal').innerText = total;
+
+            const vText = [];
+            const newVis1 = vis1.filter(v => !v.includes(' (기존)'));
+            const newVis2 = vis2.filter(v => !v.includes(' (기존)'));
+            if(newVis1.length > 0) vText.push(`[1부] ${newVis1.join(", ")}`);
+            if(newVis2.length > 0) vText.push(`[2부] ${newVis2.join(", ")}`);
+            document.getElementById('in-visit').value = vText.length > 0 ? "방문자: " + vText.join(" / ") : "";
+            return total;
+        }
+
+        function drawChart(total) {
+            const data = [Number(document.getElementById('w-3').value) || 0, Number(document.getElementById('w-2').value) || 0, Number(document.getElementById('w-1').value) || 0, total];
+            const max = Math.max(...data, 1), min = Math.min(...data), avg = Math.round(data.reduce((a, b) => a + b, 0) / 4);
+            let base = min - ((max - min) * 0.5); if (max === min) base = min * 0.8; if (base < 0) base = 0;
+            const range = (max - base) || 1, container = document.getElementById('chart-container'); container.innerHTML = "";
+            const hPct = ((avg - base) / range) * 80 + 15;
+            container.innerHTML += `<div style="position: absolute; bottom: ${hPct}%; left: 0; width: 100%; border-top: 2px dashed #94a3b8;"><span style="position: absolute; right: 10px; top: -20px; font-size: 11px; font-weight: bold; color: #64748b; background: #f8fafc; padding: 0 4px;">4주 평균: ${avg}명</span></div>`;
+            data.forEach((val, i) => {
+                let p = ((val - base) / range) * 80 + 15; if (p > 100) p = 100;
+                container.innerHTML += `<div class="flex flex-col items-center flex-1 h-full justify-end" style="z-index: 10;"><span class="text-sm mb-1 ${i===3?'text-blue-700 font-black':'text-slate-500 font-bold'}">${val}</span><div class="w-full rounded-t-md" style="height:${p}%; background-color:${i===3?'#2563eb':'#cbd5e1'}"></div><span class="text-xs ${i===3?'text-blue-700 font-bold':'text-slate-400 font-medium'} mt-2">${["3주전","2주전","지난주","이번주"][i]}</span></div>`;
+            });
+        }
+
+        const executeDownload = async (targetId, filename) => {
+            const target = document.getElementById(targetId); 
+            target.style.position = 'static'; target.style.visibility = 'visible'; target.style.display = 'block';
+            await new Promise(r => setTimeout(r, 150));
+            try {
+                const canvas = await html2canvas(target, { scale: 2, useCORS: true, width: 794, height: 1123 });
+                const link = document.createElement("a"); link.download = filename; link.href = canvas.toDataURL("image/png"); link.click();
+            } catch (err) { alert("저장 실패!"); } 
+            finally { target.style.position = 'fixed'; target.style.visibility = 'hidden'; }
+        }
+
+        const downloadReport = () => {
+            const total = calculateTotals();
+            document.getElementById('out-date').innerText = document.getElementById('in-date').value.replace(/-/g, '. ');
+            document.getElementById('out-preacher').innerText = "설교: " + document.getElementById('in-preacher').value;
+            document.getElementById('out-bible').innerText = document.getElementById('in-bible').value;
+            document.getElementById('out-title').innerText = document.getElementById('in-title').value;
+            document.getElementById('out-new').innerText = document.getElementById('in-new').value;
+            document.getElementById('out-visit').innerText = document.getElementById('in-visit').value;
+            document.getElementById('out-note').innerText = document.getElementById('in-note').value;
+            drawChart(total);
+            executeDownload('render-target', `예배보고서_${document.getElementById('in-date').value}.png`);
+        };
+
+        const downloadAttendanceSheet = () => {
+            const d = new Date(document.getElementById('in-date').value);
+            document.getElementById('out-att-year').innerText = d.getFullYear();
+            document.getElementById('out-att-month').innerText = d.getMonth() + 1;
+            document.getElementById('out-att-day').innerText = d.getDate();
+            document.getElementById('out-att-week').innerText = document.getElementById('in-week').value || "?";
+
+            const getNames = (mode, groupKey) => {
+                const arr = allMembersData[groupKey] || [];
+                const target = mode === 1 ? att1 : att2;
+                return arr.filter(m => target.includes(m)).join("  ");
+            };
+
+            document.getElementById('td-1-jik').innerText = getNames(1, '1부_직분자');
+            document.getElementById('td-1-reg').innerText = getNames(1, '1부_등록교인'); 
+            document.getElementById('td-1-unreg').innerText = getNames(1, '미등록교인') + "  " + getNames(1, '미분류_교인');
+            document.getElementById('td-1-youth').innerText = getNames(1, '청년부');
+            document.getElementById('td-1-vis').innerText = vis1.map(v => v.replace(' (기존)', '')).join("  ");
+            document.getElementById('td-1-total').innerText = (att1.length + vis1.length) + " 명";
+
+            document.getElementById('td-2-jik').innerText = getNames(2, '2부_직분자');
+            document.getElementById('td-2-reg').innerText = getNames(2, '2부_등록교인');
+            document.getElementById('td-2-unreg').innerText = getNames(2, '미등록교인') + "  " + getNames(2, '미분류_교인');
+            document.getElementById('td-2-youth').innerText = getNames(2, '청년부');
+            document.getElementById('td-2-vis').innerText = vis2.map(v => v.replace(' (기존)', '')).join("  ");
+            document.getElementById('td-2-total').innerText = (att2.length + vis2.length) + " 명";
+
+            document.getElementById('td-absent').innerText = document.getElementById('in-absent').value;
+
+            executeDownload('render-target-att-sheet', `출석명단_${document.getElementById('in-date').value}.png`);
+        };
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.getElementById(tabId).classList.add('active');
+            document.getElementById('btn-tab-attendance').className = tabId === 'tab-attendance' ? 'flex-1 py-4 font-bold text-blue-600 border-b-4 border-blue-600' : 'flex-1 py-4 font-bold text-slate-400 border-b-4 border-transparent';
+            document.getElementById('btn-tab-report').className = tabId === 'tab-report' ? 'flex-1 py-4 font-bold text-blue-600 border-b-4 border-blue-600' : 'flex-1 py-4 font-bold text-slate-400 border-b-4 border-transparent';
+        }
+        window.onload = initApp;
+    </script>
+</body>
+</html>
