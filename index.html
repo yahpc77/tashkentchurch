@@ -109,3 +109,309 @@
         let presentSet2 = new Set(); // 2부 출석자
         let allMembersData = {}; 
         let chartInstance = null;
+
+        // 💡 부서 매핑 룰 (1부/2부 선택 시 보여줄 그룹들)
+        const displayGroups1 = [
+            { key: '1부_직분자', label: '1부 직분자' },
+            { key: '1부_등록교인', label: '1부 등록교인' },
+            { key: '미등록교인', label: '미등록 교인' },
+            { key: '미분류_교인', label: '미분류 교인' }
+        ];
+        const displayGroups2 = [
+            { key: '2부_직분자', label: '2부 직분자' },
+            { key: '2부_등록교인', label: '2부 등록교인' },
+            { key: '청년부', label: '청년부' },
+            { key: '미등록교인', label: '미등록 교인' },
+            { key: '미분류_교인', label: '미분류 교인' }
+        ];
+
+        function initApp() {
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0];
+            document.getElementById('today-date').value = dateStr;
+            
+            // 파이어베이스 명단 동기화
+            db.ref('members').on('value', (snap) => {
+                const data = snap.val() || {};
+                let processed = {};
+                for(let k in data) { processed[k] = data[k] ? (Array.isArray(data[k]) ? [...data[k]] : Object.values(data[k])) : []; }
+                allMembersData = processed;
+                document.getElementById('db-status').innerHTML = "🟢 명단 로드 완료!";
+                document.getElementById('db-status').className = "text-[11px] font-bold text-green-600 mt-2 text-center";
+                renderLists();
+            });
+
+            setupDatabaseRef(dateStr);
+            document.getElementById('today-date').addEventListener('change', (e) => setupDatabaseRef(e.target.value));
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('mode-btn-1').className = mode === 1 ? "flex-1 py-3 text-base font-black rounded-lg shadow-sm bg-white text-blue-700 transition-all border border-blue-200" : "flex-1 py-3 text-base font-bold rounded-lg text-slate-500 transition-all bg-transparent";
+            document.getElementById('mode-btn-2').className = mode === 2 ? "flex-1 py-3 text-base font-black rounded-lg shadow-sm bg-white text-blue-700 transition-all border border-blue-200" : "flex-1 py-3 text-base font-bold rounded-lg text-slate-500 transition-all bg-transparent";
+            document.getElementById('current-mode-label').innerText = mode + "부";
+            renderLists();
+        }
+
+        function setupDatabaseRef(dateStr) {
+            if(attendanceRef) attendanceRef.off(); 
+            attendanceRef = db.ref('attendance/' + dateStr);
+            attendanceRef.on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                presentSet1.clear(); presentSet2.clear();
+                
+                // 1부 출석 복원
+                if(data['1부'] && data['1부'].groups) {
+                    Object.values(data['1부'].groups).forEach(g => { if(g.present) g.present.forEach(n => presentSet1.add(n)); });
+                }
+                // 2부 출석 복원
+                if(data['2부'] && data['2부'].groups) {
+                    Object.values(data['2부'].groups).forEach(g => { if(g.present) g.present.forEach(n => presentSet2.add(n)); });
+                }
+                renderLists(); 
+            });
+        }
+
+        // 🚀 [마법 엔진] 영구 등록 & 미분류 명단 자동 이사
+        window.moveOrAddMember = function(targetGroupKey, targetGroupLabel) {
+            const name = prompt(`[${targetGroupLabel}] 구역으로 이동/등록할 성도 이름을 입력하세요:\n(미분류/미등록 교인 명단에 있다면 자동으로 이사 옵니다!)`);
+            if(!name || name.trim() === "") return;
+            const cleanName = name.trim();
+
+            let updates = {};
+            for(let key in allMembersData) {
+                if(key === targetGroupKey) continue; 
+                let arr = allMembersData[key] || [];
+                if(arr.includes(cleanName)) updates['members/' + key] = arr.filter(n => n !== cleanName);
+            }
+
+            let targetArr = allMembersData[targetGroupKey] ? [...allMembersData[targetGroupKey]] : [];
+            if(!targetArr.includes(cleanName)) { targetArr.push(cleanName); targetArr.sort(); }
+            updates['members/' + targetGroupKey] = targetArr;
+
+            db.ref().update(updates).then(() => {
+                let targetSet = currentMode === 1 ? presentSet1 : presentSet2;
+                targetSet.add(cleanName);
+                saveCurrentAttendance(); // 등록 즉시 DB 저장
+                alert(`🎉 [${cleanName}] 님이 ${targetGroupLabel}으로 완벽하게 이동(등록) 및 출석체크 되었습니다!`);
+                document.getElementById('search-input').value = ""; filterMembers();
+            }).catch(e => alert("저장 실패: " + e.message));
+        };
+
+        function renderLists() {
+            const container = document.getElementById('members-container');
+            container.innerHTML = '';
+            const keyword = document.getElementById('search-input').value.trim();
+            const activeGroups = currentMode === 1 ? displayGroups1 : displayGroups2;
+            let currentSet = currentMode === 1 ? presentSet1 : presentSet2;
+
+            activeGroups.forEach(group => {
+                let membersArr = allMembersData[group.key] || [];
+                let displayMembers = [...membersArr];
+                
+                if (keyword) {
+                    displayMembers = membersArr.filter(m => m.includes(keyword));
+                    if (displayMembers.length === 0) return; // 검색 결과 없으면 숨김
+                }
+
+                const section = document.createElement('div');
+                section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
+                section.innerHTML = `<h3 class="text-sm font-black text-gray-800 mb-2 flex items-center gap-2 border-b border-gray-100 pb-2"><span class="w-2 h-4 bg-blue-500 rounded-full"></span>${group.label} <span class="text-xs text-blue-400 font-bold ml-auto">${displayMembers.length}명</span></h3>`;
+                
+                const grid = document.createElement('div');
+                grid.className = "grid grid-cols-6 gap-1.5"; // 💡 6칸 꽉 채우기 (전도사님 맞춤)
+
+                displayMembers.forEach(name => {
+                    const isPresent = currentSet.has(name);
+                    const btn = document.createElement('button');
+                    btn.className = `member-btn w-full text-center tracking-tight leading-tight ${isPresent ? 'status-present' : 'status-absent'} ${keyword ? 'highlight-search' : ''}`;
+                    btn.innerHTML = name;
+                    btn.onclick = () => { 
+                        if(currentSet.has(name)) currentSet.delete(name); else currentSet.add(name);
+                        document.getElementById('search-input').value = ""; // 클릭 시 검색어 초기화
+                        renderLists(); 
+                    };
+                    grid.appendChild(btn);
+                });
+
+                // [+] 버튼 (검색 중 아닐 때만 표시)
+                if(!keyword) {
+                    const addBtn = document.createElement('button');
+                    addBtn.className = "member-btn w-full add-btn flex items-center justify-center active:scale-90";
+                    addBtn.innerHTML = "+";
+                    addBtn.onclick = () => moveOrAddMember(group.key, group.label);
+                    grid.appendChild(addBtn);
+                }
+
+                section.appendChild(grid);
+                container.appendChild(section);
+            });
+            
+            document.getElementById('count-display').innerText = currentSet.size;
+        }
+
+        function filterMembers() { renderLists(); }
+
+        function saveCurrentAttendance() {
+            const targetDate = document.getElementById('today-date').value;
+            const currentServiceName = currentMode === 1 ? '1부' : '2부';
+            const activeGroups = currentMode === 1 ? displayGroups1 : displayGroups2;
+            let currentSet = currentMode === 1 ? presentSet1 : presentSet2;
+
+            let reportData = { totalPresent: currentSet.size, groups: {} };
+            activeGroups.forEach(g => {
+                let presentList = [], absentList = [];
+                let membersArr = allMembersData[g.key] || [];
+                membersArr.forEach(name => {
+                    if (currentSet.has(name)) presentList.push(name); else absentList.push(name);
+                });
+                reportData.groups[g.key] = { present: presentList, absent: absentList };
+            });
+            
+            return db.ref(`attendance/${targetDate}/${currentServiceName}`).set(reportData);
+        }
+
+        window.submitRealAttendance = function() {
+            saveCurrentAttendance().then(() => alert("💾 현재 부서 데이터 마감 저장 완료!")).catch(e => alert("저장 실패: " + e.message));
+        }
+
+        // 📝 보고서 로직 (V6.5 A4 블루 에디션 적용)
+        window.openReportModal = function() { document.getElementById('report-modal').style.display = 'flex'; }
+        window.closeReportModal = function() { document.getElementById('report-modal').style.display = 'none'; }
+        
+        window.generateReport = function() {
+            const targetDate = document.getElementById('today-date').value.replace(/-/g, '. ');
+            const preacher = document.getElementById('rep-preacher').value || "담임목사";
+            const scripture = document.getElementById('rep-scripture').value || "미입력";
+            const title = document.getElementById('rep-title').value || "미입력";
+            const pray = document.getElementById('rep-pray').value || "미입력";
+            const note = document.getElementById('rep-note').value || "특이사항 없음";
+            
+            // 1부, 2부 총계 합산
+            const total1 = presentSet1.size;
+            const total2 = presentSet2.size;
+            const grandTotal = total1 + total2;
+
+            const a4Html = `
+                <div class="flex justify-between items-end border-b-4 tkc-blue-border pb-3 mb-8">
+                    <div>
+                        <h1 class="text-4xl font-black tkc-blue tracking-tighter">대예배 종합 보고서</h1>
+                        <p class="text-xs font-bold text-gray-400 tracking-[0.2em] mt-1 uppercase">Tashkent Korean Church</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-black tkc-blue tracking-tight">${targetDate}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-8 mb-8">
+                    <div class="col-span-5 space-y-8">
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4 flex items-center gap-2"><span>📖</span> 예배 정보</h2>
+                            <div class="space-y-4 bg-slate-50 p-5 rounded-xl border border-slate-200">
+                                <div><p class="text-xs text-blue-500 font-bold mb-1">설교자 / 기도</p><p class="text-base font-bold text-slate-800">${preacher} / ${pray}</p></div>
+                                <div><p class="text-xs text-blue-500 font-bold mb-1">성경 본문</p><p class="text-base font-black text-slate-800">${scripture}</p></div>
+                                <div><p class="text-xs text-blue-500 font-bold mb-1">설교 제목</p><p class="text-lg font-black text-blue-900 leading-snug">${title}</p></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4 flex items-center gap-2"><span>📝</span> 특이사항 및 결석 사유</h2>
+                            <div class="bg-blue-50 p-5 rounded-xl border border-blue-100 min-h-[150px] text-sm font-bold text-slate-700 whitespace-pre-line leading-relaxed">
+                                ${note}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-span-7 space-y-8 flex flex-col">
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4 flex items-center gap-2"><span>👥</span> 출석 통계 요약</h2>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center"><p class="text-xs font-bold text-slate-500 mb-1">1부 예배</p><p class="text-2xl font-black text-blue-800">${total1}명</p></div>
+                                <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center"><p class="text-xs font-bold text-slate-500 mb-1">2부 예배</p><p class="text-2xl font-black text-blue-800">${total2}명</p></div>
+                            </div>
+                            <div class="bg-blue-900 p-6 rounded-xl flex justify-between items-center shadow-lg">
+                                <div><p class="text-blue-200 text-sm font-bold mb-1 uppercase tracking-wider">Grand Total</p><p class="text-xl font-black text-white">대예배 총 출석</p></div>
+                                <div class="text-right"><span class="text-5xl font-black text-white tracking-tighter">${grandTotal}</span><span class="text-xl font-bold text-blue-200 ml-1">명</span></div>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex flex-col">
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4 flex items-center gap-2"><span>📊</span> 최근 4주 대예배 추이</h2>
+                            <div class="border-2 border-slate-200 rounded-xl p-5 shadow-sm flex-1 relative bg-white flex items-center justify-center" id="chart-container">
+                                <canvas id="trendChart" style="max-height: 200px; width: 100%;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4 flex items-center gap-2"><span>✅</span> 1부 / 2부 상세 참석자 명단</h2>
+                    <table class="w-full border-2 tkc-blue-border text-sm mb-6">
+                        <tbody class="text-left font-bold text-slate-700">
+                            <tr class="border-b border-slate-300">
+                                <td class="py-4 px-4 bg-slate-100 border-r border-slate-300 w-24 text-center font-black text-blue-900">1부 예배</td>
+                                <td class="py-4 px-4 leading-relaxed">${Array.from(presentSet1).sort().join(', ') || '-'}</td>
+                            </tr>
+                            <tr>
+                                <td class="py-4 px-4 bg-slate-100 border-r border-slate-300 w-24 text-center font-black text-blue-900">2부 예배</td>
+                                <td class="py-4 px-4 leading-relaxed">${Array.from(presentSet2).sort().join(', ') || '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.getElementById('a4-content').innerHTML = a4Html;
+            closeReportModal();
+            document.getElementById('main-app').style.display = 'none';
+            document.getElementById('report-view').style.display = 'block';
+
+            // 💡 4주 데이터 집계 차트 그리기
+            if (typeof Chart === 'undefined') return;
+            try {
+                db.ref('attendance').orderByKey().limitToLast(4).once('value').then((snapshot) => {
+                    let historyData = [];
+                    let labels = [];
+                    if (snapshot.exists()) {
+                        snapshot.forEach(child => {
+                            labels.push(child.key.slice(5)); 
+                            let day1bu = child.val()['1부']?.totalPresent || 0;
+                            let day2bu = child.val()['2부']?.totalPresent || 0;
+                            historyData.push(day1bu + day2bu);
+                        });
+                    }
+                    if(historyData.length === 0) { labels = ['이번주']; historyData = [grandTotal]; }
+
+                    const ctx = document.getElementById('trendChart').getContext('2d');
+                    if (chartInstance) chartInstance.destroy(); 
+                    chartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: historyData,
+                                borderColor: '#1e3a8a', backgroundColor: 'rgba(37,99,235,0.1)',
+                                borderWidth: 3, pointBackgroundColor: '#ea580c', pointRadius: 6, fill: true, tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false } }, 
+                            scales: {
+                                y: { beginAtZero: true, grid: { borderDash: [4, 4] } }, 
+                                x: { grid: { display: false }, ticks: { font: { size: 12, weight: 'bold' } } }
+                            },
+                            animation: { duration: 0 } 
+                        }
+                    });
+                });
+            } catch(e) { console.error("차트 에러:", e); }
+        }
+
+        function closeReportView() {
+            document.getElementById('report-view').style.display = 'none';
+            document.getElementById('main-app').style.display = 'flex';
+        }
+        
+        window.onload = initApp;
+    </script>
+</body>
+</html>
