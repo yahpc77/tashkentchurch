@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>V6.5 타슈켄트 한인교회 실시간 예배</title>
+    <title>V7 타슈켄트 한인교회 대예배 출석부</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,10 +20,11 @@
         .tab-content.active { display: block; }
         .print-text { font-size: 14px; color: #334155; font-weight: 500; line-height: 1.6; white-space: pre-line; word-break: break-word; text-align: left !important; }
         .sticky-header { position: sticky; top: 0; z-index: 30; background: #f3f4f6; padding-top: 10px; padding-bottom: 10px;}
-        .touch-btn { transition: transform 0.1s; }
+        .touch-btn { transition: transform 0.1s ease; }
         .touch-btn:active { transform: scale(0.92); }
         .add-btn { border: 2px dashed #93c5fd; color: #3b82f6; background-color: #eff6ff; }
-        #render-target .chart-bar { transition: none !important; }
+        .highlight-search { animation: pulse-border 1.2s infinite; background-color: #fde047 !important; color: #b45309 !important; font-weight: 900 !important; border: 2.5px solid #ea580c !important; transform: scale(1.05) !important; z-index: 10 !important; opacity: 1 !important; }
+        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(234, 88, 12, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); } }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen pb-24 relative">
@@ -32,7 +33,7 @@
 
         <div id="tab-attendance" class="tab-content active p-4">
             <header class="mb-4 text-center">
-                <h1 class="text-2xl font-black text-slate-800">주일 실시간 출석부</h1>
+                <h1 class="text-2xl font-black text-slate-800">주일 실시간 출석부 V7</h1>
                 <p id="connection-status" class="text-xs text-orange-500 font-bold mt-1">🟡 서버 연결 대기 중...</p>
             </header>
 
@@ -124,7 +125,7 @@
 
             <section class="mb-8">
                 <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-sm font-bold text-blue-600 uppercase tracking-wider">04. 출석부용 결석자 명단</h2>
+                    <h2 class="text-sm font-bold text-blue-600 uppercase tracking-wider">04. 출석부 결석자 명단</h2>
                     <button onclick="loadAbsentees()" class="bg-slate-700 text-white text-xs px-2 py-1 rounded font-bold shadow-sm active:scale-95">결석자 불러오기</button>
                 </div>
                 <div class="space-y-2">
@@ -145,3 +146,93 @@
             <div class="mt-8 p-4 bg-blue-900 rounded-xl text-center shadow-lg mb-6">
                 <p id="ui-total" class="text-4xl font-black text-white">0 명</p>
             </div>
+            
+            <div class="flex flex-col gap-3">
+                <button onclick="downloadReport()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-md text-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                    <span>🖨️ 예배 보고서 저장</span>
+                </button>
+                <button onclick="downloadAttendanceSheet()" class="w-full bg-slate-800 text-white font-bold py-4 rounded-xl shadow-md text-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                    <span>📋 1/2부 상세 출석부 저장</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex text-center z-40 shadow-[0_-5px_10px_rgba(0,0,0,0.05)]">
+        <button onclick="switchTab('tab-attendance')" id="btn-tab-attendance" class="flex-1 py-4 font-bold text-blue-600 border-b-4 border-blue-600">📋 실시간 출석체크</button>
+        <button onclick="switchTab('tab-report')" id="btn-tab-report" class="flex-1 py-4 font-bold text-slate-400 border-b-4 border-transparent">📝 보고서 작성</button>
+    </div>
+
+    <div id="render-target" style="position:fixed; top:-9999px; left:-9999px; width:794px; height:1123px; background:white; padding:60px 50px; box-sizing:border-box; visibility:hidden;">
+        <header class="flex justify-between items-end border-b-4 border-slate-900 pb-4 mb-8">
+            <div><h1 class="text-4xl font-black text-slate-900 tracking-tight">주일 예배 보고서</h1><p class="text-sm font-bold text-slate-500 mt-2 tracking-[0.3em]">TASHKENT KOREAN CHURCH</p></div>
+            <div class="text-right"><div id="out-date" class="text-xl font-bold text-slate-800"></div><div id="out-preacher" class="text-md font-medium text-slate-500"></div></div>
+        </header>
+        <div class="grid grid-cols-12 gap-10 h-[880px]">
+            <div class="col-span-5 flex flex-col h-full">
+                <div class="mb-10"><h2 class="text-lg font-bold text-blue-900 border-b-2 border-blue-900 pb-2 mb-4">Ⅰ. 예배 정보</h2><div class="space-y-6"><div><span class="block text-xs font-bold text-slate-400 mb-1">성경 본문</span><div id="out-bible" class="text-lg font-bold text-slate-800"></div></div><div><span class="block text-xs font-bold text-slate-400 mb-1">설교 제목</span><div id="out-title" class="text-xl font-black text-slate-900 leading-tight"></div></div></div></div>
+                <div class="flex-grow flex flex-col"><h2 class="text-lg font-bold text-blue-900 border-b-2 border-blue-900 pb-2 mb-4">Ⅲ. 상세 보고</h2><div class="space-y-6 flex-grow flex flex-col">
+                    <div><span class="block text-xs font-bold text-slate-400 mb-1">등록자</span><div id="out-new" class="print-text bg-slate-50 p-4 rounded-lg min-h-[80px]"></div></div>
+                    <div><span class="block text-xs font-bold text-slate-400 mb-1">방문자</span><div id="out-visit" class="print-text bg-slate-50 p-4 rounded-lg min-h-[100px]"></div></div>
+                    <div class="flex-grow flex flex-col"><span class="block text-xs font-bold text-slate-400 mb-1">특이사항</span><div id="out-note" class="print-text bg-slate-50 p-4 rounded-lg flex-grow"></div></div></div></div>
+            </div>
+            <div class="col-span-7 flex flex-col h-full justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-blue-900 border-b-2 border-blue-900 pb-2 mb-6">Ⅱ. 출석 현황</h2>
+                    <h3 class="font-bold text-slate-700 mb-2 pl-2 border-l-4 border-slate-300">1. 대예배</h3>
+                    <table class="w-full text-center mb-8 border-collapse">
+                        <thead><tr class="bg-slate-100 text-slate-600 text-sm border-t border-b border-slate-300"><th class="py-2 w-1/3">구분</th><th class="py-2 w-2/3 bg-slate-200 text-slate-800">출석 인원</th></tr></thead>
+                        <tbody class="text-lg font-medium text-slate-800">
+                            <tr class="border-b border-slate-200"><td class="py-3 font-bold text-slate-500 bg-slate-50">1부 예배</td><td id="out-1bu" class="font-bold text-blue-900">0</td></tr>
+                            <tr class="border-b border-slate-200"><td class="py-3 font-bold text-slate-500 bg-slate-50">2부 예배</td><td id="out-2bu" class="font-bold text-blue-900">0</td></tr>
+                        </tbody>
+                        <tfoot><tr><td class="text-right py-3 pr-4 text-sm font-bold text-slate-500 bg-slate-50">대예배 소계</td><td id="out-mainTotal" class="py-3 font-black text-2xl text-blue-900 bg-blue-50">0</td></tr></tfoot>
+                    </table>
+                    <h3 class="font-bold text-slate-700 mb-2 pl-2 border-l-4 border-slate-300">2. 교육부서</h3>
+                    <div class="grid grid-cols-4 text-center border-t border-b border-slate-300 mb-8">
+                        <div class="bg-slate-100 py-2 text-sm font-bold text-slate-600">청년</div><div class="bg-slate-100 py-2 text-sm font-bold text-slate-600">중고등</div><div class="bg-slate-100 py-2 text-sm font-bold text-slate-600">유초등</div><div class="bg-slate-100 py-2 text-sm font-bold text-slate-600">유아</div>
+                        <div id="out-edu1" class="py-3 font-bold text-lg text-slate-800 border-r border-slate-200">0</div><div id="out-edu2" class="py-3 font-bold text-lg text-slate-800 border-r border-slate-200">0</div><div id="out-edu3" class="py-3 font-bold text-lg text-slate-800 border-r border-slate-200">0</div><div id="out-edu4" class="py-3 font-bold text-lg text-slate-800">0</div>
+                    </div>
+                </div>
+                <div class="mb-6"><h3 class="font-bold text-slate-700 mb-4 pl-2 border-l-4 border-slate-300">📊 최근 4주 출석 추이</h3><div id="chart-container" class="relative border border-slate-200 rounded-lg p-6 pb-2 bg-slate-50 h-[180px] flex items-end justify-around gap-6 text-center"></div></div>
+                <div class="bg-blue-900 text-white rounded-xl p-6 flex justify-between items-center shadow-lg"><div><p class="text-sm opacity-80 mb-1">TOTAL ATTENDANCE</p><p class="text-2xl font-bold">총 출석 인원</p></div><div class="text-right"><span id="out-grandTotal" class="text-5xl font-black tracking-tighter">0</span><span class="text-2xl font-bold ml-1">명</span></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="render-target-att-sheet" style="position:fixed; top:-9999px; left:-9999px; width:794px; height:1123px; background:white; padding:50px; box-sizing:border-box; visibility:hidden;">
+        <div class="flex justify-between items-end mb-6 px-2 border-b-2 border-slate-900 pb-4">
+            <h1 class="text-3xl font-black tracking-widest"><span id="out-att-year">2026</span> 년 출석부</h1>
+            <div class="text-xl font-bold"><span id="out-att-month">3</span> 월 <span id="out-att-day">15</span> 일 ( <span id="out-att-week">10</span>주 )</div>
+        </div>
+        <table class="w-full border-collapse border-2 border-slate-800 text-[15px]">
+            <thead>
+                <tr class="bg-slate-200 border-b-2 border-slate-800">
+                    <th class="border border-slate-800 py-3 w-1/6">구 분</th>
+                    <th class="border border-slate-800 py-3 w-5/12 text-lg">1 부</th>
+                    <th class="border border-slate-800 py-3 w-5/12 text-lg">2 부</th>
+                </tr>
+            </thead>
+            <tbody class="text-center font-medium">
+                <tr>
+                    <td class="border border-slate-800 py-4 bg-slate-50 font-bold">직분자</td>
+                    <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-1-jik"></td>
+                    <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-2-jik"></td>
+                </tr>
+                <tr>
+                    <td class="border border-slate-800 py-4 bg-slate-50 font-bold">등록 교인</td>
+                    <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-1-reg"></td>
+                    <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-2-reg"></td>
+                </tr>
+                <tr>
+                    <td class="border border-slate-800 py-4 bg-slate-50 font-bold">미등록<br>교인</td>
+                    <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-1-unreg"></td>
+                    <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-2-unreg"></td>
+                </tr>
+                <tr>
+                    <td class="border border-slate-800 py-4 bg-slate-50 font-bold">청년부</td>
+                    <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-1-youth"></td>
+                    <td class="border border-slate-800 p-3 text-left leading-relaxed align-top" id="td-2-youth"></td>
+                </tr>
+                <tr>
+                    <td class="
