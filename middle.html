@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>V6.4 중고등부 실전 출석부 (Pro)</title>
+    <title>V6.5 중고등부 실전 출석부 (영구등록판)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -15,7 +15,7 @@
         .member-btn:active { transform: scale(0.9); }
         .status-absent { background-color: #ffffff; color: #64748b; border: 1.5px solid #cbd5e1; }
         .status-present { background-color: #4f46e5; color: white; border: 1.5px solid #312e81; font-weight: 900; box-shadow: 0 2px 4px rgba(79,70,229,0.3); }
-        .new-friend-btn { background-color: #f1f5f9; color: #64748b; border: 2px dashed #94a3b8; }
+        .new-friend-btn { background-color: #f8fafc; color: #64748b; border: 2px dashed #94a3b8; }
         .highlight-search { animation: pulse-border 1.2s infinite; background-color: #fde047 !important; color: #b45309 !important; font-weight: 900 !important; border: 2.5px solid #ea580c !important; transform: scale(1.05) !important; z-index: 10 !important; opacity: 1 !important; }
         @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(234, 88, 12, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); } }
         
@@ -39,7 +39,7 @@
     <div id="main-app" class="flex flex-col h-full pb-16">
         <div class="bg-white shadow-sm shrink-0 px-2 py-2 border-b-4 border-indigo-600 z-50">
             <div class="flex justify-between items-center mb-1">
-                <h1 class="text-sm font-black text-indigo-800">🔥 중고등부 출석 V6.4 (Pro)</h1>
+                <h1 class="text-sm font-black text-indigo-800">🔥 중고등부 출석 V6.5 (자동등록)</h1>
                 <input type="date" id="today-date" class="text-xs font-bold text-gray-700 bg-gray-100 px-1 py-0.5 rounded border border-gray-300 outline-none">
             </div>
             <input type="text" id="search-input" onkeyup="searchMember()" placeholder="🔍 이름 검색 (새친구는 [+] 버튼)" class="w-full bg-slate-100 border-2 border-slate-300 text-sm font-black rounded p-1.5 outline-none focus:border-indigo-500 text-center text-indigo-900 mt-1">
@@ -89,7 +89,6 @@
         let db;
         let allMembersData = {}; 
         let presentSet = new Set(); 
-        let tempNewFriends = {}; // 당일 새 친구 임시 저장소
         let chartInstance = null;
 
         function getSortedMiddleGroups(dataObj) {
@@ -116,6 +115,7 @@
             if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
             db = firebase.database();
 
+            // 🔥 실시간 데이터 동기화 (DB가 바뀌면 앱 화면이 알아서 새로고침됨!)
             db.ref('members').on('value', (snapshot) => {
                 let data = snapshot.val() || {};
                 if (data.members) data = data.members; 
@@ -135,6 +135,7 @@
                         
                         let arr = Array.isArray(data[key]) ? [...data[key]] : Object.values(data[key]);
                         
+                        // 화면에 보여줄 때만 임시로 선생님 버튼 만들어줌 (DB 원본은 안 건드림!)
                         if (teacherName) {
                             let teacherFullName = teacherName + "(교사)";
                             if (!arr.some(n => n.includes(teacherName))) arr.unshift(teacherFullName);
@@ -160,13 +161,10 @@
             container.innerHTML = '';
             
             const groupsToRender = getSortedMiddleGroups(allMembersData);
-
             if(groupsToRender.length === 0) return;
 
             groupsToRender.forEach(groupName => {
-                let baseMembers = allMembersData[groupName] || [];
-                let newFriends = tempNewFriends[groupName] || [];
-                let membersArr = [...baseMembers, ...newFriends]; // 기존 명단 + 새 친구 병합
+                let membersArr = allMembersData[groupName] || [];
                 
                 let rawStr = groupName.replace("중고등부_", "");
                 let displayGroupName = rawStr.split(/[_\s]+/)[0]; 
@@ -178,7 +176,6 @@
                 const leaders = membersArr.filter(n => typeof n === 'string' && (n.includes("(교사)") || n.includes("(부장)")));
                 const members = membersArr.filter(n => typeof n === 'string' && (!n.includes("(교사)") && !n.includes("(부장)")));
 
-                // 교사 렌더링
                 if (leaders.length > 0) {
                     const leaderGrid = document.createElement('div');
                     leaderGrid.className = "grid grid-cols-2 gap-1 mb-2"; 
@@ -198,7 +195,6 @@
                     section.appendChild(leaderGrid);
                 }
 
-                // 학생 렌더링
                 const memberGrid = document.createElement('div');
                 memberGrid.className = "grid grid-cols-6 gap-1";
                 members.forEach(name => {
@@ -210,89 +206,16 @@
                     memberGrid.appendChild(btn);
                 });
 
-                // 💡 [프로 모드 검증] DOM 요소로 안전하게 + 버튼 생성
+                // 💡 [새친구 영구 등록 엔진] 
                 const addFriendBtn = document.createElement('button');
                 addFriendBtn.className = "member-btn w-full py-1.5 rounded text-center font-black text-[18px] new-friend-btn active:scale-90";
                 addFriendBtn.innerHTML = "+";
                 addFriendBtn.onclick = () => {
-                    const newName = prompt(`[${displayGroupName}] 반에 새로 온 친구 이름을 입력하세요:`);
+                    const newName = prompt(`[${displayGroupName}] 반에 영구 등록할 친구 이름을 입력하세요:`);
                     if(newName && newName.trim() !== "") {
-                        const cleanName = newName.trim() + "✨"; // 반짝이 마크로 새친구 식별
-                        if(!tempNewFriends[groupName]) tempNewFriends[groupName] = [];
-                        tempNewFriends[groupName].push(cleanName);
-                        presentSet.add(cleanName); // 추가 즉시 출석 체크
-                        renderLists(); // 화면 새로고침
-                    }
-                };
-                memberGrid.appendChild(addFriendBtn);
-                
-                section.appendChild(memberGrid);
-                container.appendChild(section);
-            });
-            document.getElementById('count-display').innerText = presentSet.size;
-            searchMember(); // 렌더링 후 검색어 유지
-        }
-
-        function searchMember() {
-            const keyword = document.getElementById('search-input').value.trim();
-            const buttons = document.querySelectorAll('.member-btn');
-            if (keyword === "") { buttons.forEach(btn => { btn.classList.remove('highlight-search'); btn.style.opacity = '1'; }); return; }
-            buttons.forEach(btn => {
-                if(btn.innerText === "+") return; // + 버튼은 검색 대상 제외
-                const pureName = btn.innerText.replace('👨‍🏫 ', '').replace('✨', '').trim().split(' ')[0];
-                if (pureName.includes(keyword)) { btn.classList.add('highlight-search'); btn.style.opacity = '1'; } 
-                else { btn.classList.remove('highlight-search'); btn.style.opacity = '0.15'; }
-            });
-        }
-
-        window.submitRealAttendance = function() {
-            const targetDate = document.getElementById('today-date').value;
-            if (!confirm(`[중고등부] 총 ${presentSet.size}명\n이대로 DB에 마감 저장하시겠습니까?`)) return;
-
-            let reportData = { totalPresent: presentSet.size, groups: {} };
-            for (const groupName in allMembersData) {
-                if (groupName.startsWith("중고등부_")) {
-                    let presentList = []; let absentList = [];
-                    let baseMembers = allMembersData[groupName] || [];
-                    let newFriends = tempNewFriends[groupName] || [];
-                    let fullList = [...baseMembers, ...newFriends]; // 기존 + 새친구 통합
-                    
-                    fullList.forEach(name => {
-                        if (presentSet.has(name)) presentList.push(name); else absentList.push(name);
-                    });
-                    reportData.groups[groupName] = { present: presentList, absent: absentList };
-                }
-            }
-            db.ref(`attendance/${targetDate}/중고등부`).set(reportData).then(() => { alert("💾 데이터베이스 저장 완료!"); }).catch(e => alert("저장 실패: " + e.message));
-        }
-
-        window.openReportModal = function() { document.getElementById('report-modal').style.display = 'flex'; }
-        window.closeReportModal = function() { document.getElementById('report-modal').style.display = 'none'; }
-        
-        window.generateReport = function() {
-            const targetDate = document.getElementById('today-date').value;
-            const formattedDate = targetDate.replace(/-/g, '. ');
-            
-            const preacher = document.getElementById('rep-preacher').value || "미입력";
-            const scripture = document.getElementById('rep-scripture').value || "미입력";
-            const title = document.getElementById('rep-title').value || "미입력";
-            const pray = document.getElementById('rep-pray').value || "미입력";
-            const note = document.getElementById('rep-note').value || "특이사항 없음";
-            const totalCount = presentSet.size;
-
-            let leaderCount = 0; let memberCount = 0;
-            presentSet.forEach(name => {
-                if(name.includes("(교사)") || name.includes("(부장)")) leaderCount++;
-                else memberCount++;
-            });
-
-            let groupRows = '';
-            const groups = getSortedMiddleGroups(allMembersData);
-            groups.forEach(groupName => {
-                let baseMembers = allMembersData[groupName] || [];
-                let newFriends = tempNewFriends[groupName] || [];
-                let fullList = [...baseMembers, ...newFriends];
-                if(fullList.length === 0) return;
-                
-                const presentMembers = fullList.filter(name => presentSet.has(name)).sort();
-                const absentMembers = fullList.filter(name =>
+                        const cleanName = newName.trim();
+                        
+                        // DB에서 현재 진짜 명단을 불러옴
+                        const groupRef = db.ref('members/' + groupName);
+                        groupRef.once('value').then(snap => {
+                            let
