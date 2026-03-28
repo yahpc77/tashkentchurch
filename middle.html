@@ -118,10 +118,9 @@
     </div>
 
     <script>
-        // 🚨 [필독] 부서에 맞게 아래 이름만 바꾸세요! (청년부, 중고등부, 유초등부, 유치부 중 택 1)
+        // 🚨 [필독] 부서에 맞게 아래 이름만 바꾸세요!
         const DEPT_NAME = "중고등부"; 
         
-        // 🚨 형이 넘겨준 3주치 과거 데이터 
         const historyData = {
             '청년부': [38, 33, 36],
             '중고등부': [59, 53, 55],
@@ -214,12 +213,14 @@
                 
                 const section = document.createElement('div'); section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
                 
-                // 🚨 교사 이름 버튼 색상 버그 픽스 완료! (status-present 적용)
+                // 🚨 교사 이름 버튼 색상 완벽 수정 (presentSet.has로 출석 여부 정확히 확인)
                 let leaderBtnHtml = '';
                 if(info.leaderName) {
-                    const isLeaderPresent = presentSet.has(info.leaderName);
+                    const cleanLeaderName = info.leaderName.trim();
+                    const isLeaderPresent = presentSet.has(cleanLeaderName);
+                    // 출석 시 파란색(bg-blue-600), 결석 시 회색(bg-slate-100) 적용!
                     const leaderBtnClass = isLeaderPresent ? 'bg-blue-600 text-white border-blue-800 shadow-md' : 'bg-slate-100 text-slate-600 border-slate-300';
-                    leaderBtnHtml = `<button onclick="toggleAttendance('${info.leaderName}')" class="px-3 py-1.5 rounded-lg text-[13px] font-black tracking-tight transition-all border ${leaderBtnClass} ${isLeaderMatch ? 'highlight-search' : ''}">👨‍🏫 ${info.leaderName}</button>`;
+                    leaderBtnHtml = `<button onclick="toggleAttendance('${cleanLeaderName}')" class="px-3 py-1.5 rounded-lg text-[13px] font-black tracking-tight transition-all border ${leaderBtnClass} ${isLeaderMatch ? 'highlight-search' : ''}">👨‍🏫 ${cleanLeaderName}</button>`;
                 }
 
                 section.innerHTML = `<div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2"><h3 class="text-sm font-black text-gray-800 flex items-center gap-1.5 section-title"><span class="w-2 h-4 bg-indigo-500 rounded-full"></span>${info.className} ${DEPT_NAME==="청년부"?"":"반"}<span class="text-xs text-indigo-400 font-bold ml-1">${membersArr.length}명</span></h3>${leaderBtnHtml}</div>`;
@@ -256,7 +257,6 @@
         window.closeReportCenter = function() { document.getElementById('report-modal').style.display = 'none'; }
         window.closeReportView = function() { document.getElementById('report-view').style.display = 'none'; document.getElementById('main-app').style.display = 'block'; }
 
-        // 🚨 모바일 자동 핏 로직
         function scaleReport() {
             const container = document.getElementById('report-container');
             const page = document.getElementById('a4-content');
@@ -286,19 +286,16 @@
         window.closeAbsenteeModal = function() { document.getElementById('absentee-modal').style.display = 'none'; }
         function updateAbsenteeBadge() { document.getElementById('absentee-count-badge').innerText = `${Object.keys(absenteeReasons).length}명 작성됨`; }
 
-        // 🚀 하이브리드 다이어트 솔루션 반영! (옛날 양식 + 세련된 2단 상단)
         window.generateSingleReport = async function() {
             const targetDate = document.getElementById('today-date').value.replace(/-/g, '. ');
             const preacher = document.getElementById('rep-preacher').value || "미입력"; const scripture = document.getElementById('rep-scripture').value || "미입력"; const title = document.getElementById('rep-title').value || "미입력"; const note = document.getElementById('rep-note').value || "특이사항 없음";
             const totalPresent = presentSet.size + visitorsNew.length + visitorsRecurring.length;
             const visHtml = visitorsNew.map(v=>`${v.name}(${v.reason})`).join(', ') || "없음";
 
-            // 결석사유 텍스트화
             const absKeys = Object.keys(absenteeReasons).sort();
             let absRows = absKeys.map(name => `[${name}] ${absenteeReasons[name]}`).join(' / ');
             if(absKeys.length === 0) absRows = `작성된 결석 사유가 없습니다.`;
 
-            // 🚨 하단 풀와이드(Full Width) 상세 출석 명단 생성
             let groupRows = '';
             getSortedGroups(allDeptData).forEach(gKey => {
                 if (gKey.includes("교사") || gKey.includes("임원")) return;
@@ -386,7 +383,6 @@
 
             if(typeof Chart !== 'undefined') {
                 setTimeout(() => { 
-                    // 🚨 부서별 4주치 과거 데이터 완벽 연동
                     const pastData = historyData[DEPT_NAME] || [0, 0, 0];
                     const chartData = [pastData[0], pastData[1], pastData[2], totalPresent];
                     const labels = ['3주전', '2주전', '지난주', '이번주'];
@@ -414,7 +410,7 @@
                             animation: { duration: 0 } 
                         } 
                     }); 
-                }, 200); // 차트 렌더링 안정성을 위해 0.2초 딜레이
+                }, 200); 
             }
         }
 
