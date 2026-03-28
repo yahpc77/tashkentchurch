@@ -37,12 +37,14 @@
         
         /* 🚨 모바일 찌그러짐 원천 차단! 절대 폭 794px 강제 고정 */
         #report-container { width: 100%; display: flex; justify-content: center; overflow-x: hidden; }
-        .a4-page { width: 794px !important; min-width: 794px !important; max-width: 794px !important; min-height: 1123px; background: white; padding: 30px 40px; box-sizing: border-box; box-shadow: 0 10px 20px rgba(0,0,0,0.2); margin: 0 auto; transform-origin: top center; }
+        .a4-page { width: 794px !important; min-width: 794px !important; max-width: 794px !important; min-height: 1123px; background: white; padding: 40px 50px; box-sizing: border-box; box-shadow: 0 10px 20px rgba(0,0,0,0.2); margin: 0 auto; transform-origin: top center; }
+        
+        /* 세련된 파란색 테두리 색상 통일 */
         .tkc-blue { color: #1e3a8a; } .tkc-blue-border { border-color: #1e3a8a; }
         
-        /* 표를 빽빽하고 예쁘게 만드는 다이어트 CSS */
-        .dense-table th, .dense-table td { padding: 6px 8px; border: 1px solid #1e293b; }
-        .dense-table th { background-color: #f1f5f9; color: #1e293b; font-weight: 900; }
+        /* 2, 3번 보고서용 밀도 높은 표 (1번은 사용 안 함) */
+        .dense-table th, .dense-table td { padding: 6px 8px; border: 1px solid #cbd5e1; }
+        .dense-table th { background-color: #f1f5f9; color: #334155; font-weight: 900; }
         
         @media print {
             body { background-color: white; margin: 0; padding: 0; }
@@ -96,7 +98,7 @@
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border-t-8 border-indigo-600 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-black text-indigo-900 tracking-tight">🗂️ 보고서 센터</h2><button onclick="closeReportCenter()" class="text-gray-400 font-bold text-xl">&times;</button></div>
             <div class="space-y-2 mb-6 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                <input type="text" id="rep-preacher" value="담임목사" placeholder="설교자" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
+                <input type="text" id="rep-preacher" value="이수정 담임목사" placeholder="설교자" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
                 <input type="text" id="rep-scripture" placeholder="말씀 본문" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
                 <input type="text" id="rep-title" placeholder="설교 제목" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
                 <input type="text" id="rep-pray" placeholder="대표 기도자" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
@@ -104,9 +106,9 @@
             </div>
             <button onclick="openAbsenteeModal()" class="w-full bg-orange-100 text-orange-700 border border-orange-300 py-3 rounded-xl font-black text-sm mb-6 active:scale-95 flex justify-between px-4 items-center"><span>✍️ 결석자 사유 입력하기</span><span id="absentee-count-badge" class="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">0명 완료</span></button>
             <div class="space-y-2">
-                <button onclick="generateReport(1)" class="w-full bg-blue-700 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">1. 📊 예배 종합 보고서 (전교인 요약)</button>
-                <button onclick="generateReport(2)" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">2. ✅ 대예배 상세 출석부 (양식)</button>
-                <button onclick="generateReport(3)" class="w-full bg-teal-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">3. 🌐 전교인 통합 출석부 (전 부서)</button>
+                <button onclick="generateReport(1)" class="w-full bg-blue-700 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">1. 📊 예배 종합 보고서 (세련된 양식)</button>
+                <button onclick="generateReport(2)" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">2. ✅ 대예배 상세 출석부</button>
+                <button onclick="generateReport(3)" class="w-full bg-teal-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">3. 🌐 전교인 통합 출석부</button>
                 <button onclick="generateReport(4)" class="w-full bg-red-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">4. ❌ 결석자/심방 보고서</button>
             </div>
         </div>
@@ -130,7 +132,7 @@
     </div>
 
     <script>
-        // 🚨 3주치 과거 데이터
+        // 🚨 3주치 과거 데이터 (형이 준 실데이터)
         const historyData = {
             '1부': [52, 50, 59],
             '2부': [114, 96, 94],
@@ -257,12 +259,12 @@
         window.closeReportCenter = function() { document.getElementById('report-modal').style.display = 'none'; }
         window.closeReportView = function() { document.getElementById('report-view').style.display = 'none'; document.getElementById('main-app').style.display = 'block'; }
 
-        // 🚨 모바일 자동 핏 (비율 완벽 유지)
+        // 🚨 모바일 자동 핏 (비율 완벽 유지 & 찌그러짐 원천 차단)
         function scaleReport() {
             const container = document.getElementById('report-container');
             const page = document.getElementById('a4-content');
             const w = container.clientWidth;
-            if(w < 820) { 
+            if(w < 820 && w > 0) { 
                 const scale = w / 820; 
                 page.style.transform = `scale(${scale})`;
                 page.style.transformOrigin = 'top center';
@@ -302,7 +304,7 @@
             let html = "";
 
             if (type === 1) {
-                // [보고서 1] 예배 종합 보고서
+                // 🚀 [보고서 1] 세련된 디자인 부활 + 4주 통계 표 탑재 (목사님 맞춤형 실용 보고서)
                 const snap = await db.ref('attendance/' + document.getElementById('today-date').value).once('value');
                 const todayData = snap.val() || {};
                 
@@ -314,61 +316,84 @@
                 const deptTotal = yTotal + mTotal + eTotal + kTotal;
                 const grandTotal = mainTotal + deptTotal;
 
-                const visHtml = [...vNew1.map(v=>`[1부] ${v.name}(${v.reason})`), ...vNew2.map(v=>`[2부] ${v.name}(${v.reason})`)].join(', ') || "없음";
+                const visHtml = [...vNew1.map(v=>`[1부] ${v.name}(${v.reason})`), ...vNew2.map(v=>`[2부] ${v.name}(${v.reason})`)].join('<br>') || "없음";
                 
                 html = `
-                <div class="flex justify-between items-end border-b-4 tkc-blue-border pb-2 mb-6">
+                <div class="flex justify-between items-end border-b-4 tkc-blue-border pb-3 mb-6">
                     <div>
-                        <h1 class="text-3xl font-black tkc-blue tracking-tighter">예배 종합 보고서</h1>
+                        <h1 class="text-3xl font-black tkc-blue tracking-tighter">통합 예배 및 출석 보고서</h1>
                         <p class="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Tashkent Korean Church</p>
                     </div>
                     <div class="text-right leading-tight">
                         <p class="text-xl font-black tkc-blue tracking-tight">${targetDate}</p>
+                        <p class="text-[11px] font-bold text-gray-500 mt-1">설교/기도: ${preacher} / ${pray}</p>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-6 mb-6">
-                    <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-8 mb-6">
+                    <div class="space-y-6">
                         <div>
-                            <h2 class="text-[14px] font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-2">I. 예배 정보</h2>
-                            <table class="w-full text-[12px] border border-slate-300 dense-table">
-                                <tr><th class="w-20">설교/기도</th><td class="font-bold text-slate-800">${preacher} / ${pray}</td></tr>
-                                <tr><th>성경본문</th><td class="font-black text-slate-800">${scripture}</td></tr>
-                                <tr><th>설교제목</th><td class="font-black text-blue-900">${title}</td></tr>
-                            </table>
+                            <h2 class="text-[15px] font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-3">I. 예배 정보</h2>
+                            <div class="space-y-3 pl-1">
+                                <div><p class="text-[11px] font-bold text-gray-400 mb-0.5">성경 본문</p><p class="text-[15px] font-black text-slate-800">${scripture}</p></div>
+                                <div><p class="text-[11px] font-bold text-gray-400 mb-0.5">설교 제목</p><p class="text-lg font-black text-slate-800">${title}</p></div>
+                            </div>
                         </div>
-                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                            <p class="text-[12px] font-black text-orange-800 mb-1 border-b border-orange-200 pb-1">🌱 대예배 방문자 및 새가족</p>
-                            <p class="text-[12px] font-bold text-slate-800 mb-3">${visHtml}</p>
-                            <p class="text-[12px] font-black text-slate-600 mb-1 border-b border-slate-200 pb-1">📝 특이사항 요약</p>
-                            <p class="text-[12px] font-medium text-slate-700 whitespace-pre-line leading-relaxed">${note}</p>
+                        <div>
+                            <h2 class="text-[15px] font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-3">II. 상세 보고</h2>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-3">
+                                <p class="text-[12px] font-bold text-slate-500 mb-2">방문자 및 새가족</p>
+                                <p class="text-[13px] font-bold text-blue-800 leading-relaxed">${visHtml}</p>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 min-h-[120px]">
+                                <p class="text-[12px] font-bold text-slate-500 mb-2">특이사항 요약</p>
+                                <p class="text-[13px] font-bold text-slate-700 whitespace-pre-line leading-relaxed">${note}</p>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="space-y-4">
-                        <div class="bg-indigo-900 p-4 rounded-xl flex justify-between items-center shadow-md">
-                            <div><p class="text-indigo-200 text-[10px] font-bold mb-0.5 uppercase tracking-wider">Grand Total</p><p class="text-[15px] font-black text-white">전교인 총 출석</p></div>
-                            <div class="text-right"><span class="text-3xl font-black text-white tracking-tighter">${grandTotal}</span><span class="text-[14px] font-bold text-indigo-200 ml-1">명</span></div>
-                        </div>
+                    <div class="space-y-6">
+                        <h2 class="text-[15px] font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-2">III. 통합 출석 현황</h2>
                         
                         <div>
-                            <h2 class="text-[14px] font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-2">II. 전교인 출석 통계</h2>
-                            <table class="w-full text-center border-2 tkc-blue-border text-[12px] table-fixed dense-table">
-                                <thead>
-                                    <tr><th>대예배</th><th>청년</th><th>중고등</th><th>유초등</th><th>유치</th></tr>
+                            <p class="text-[13px] font-black text-slate-800 mb-1.5">1. 대예배 소계</p>
+                            <table class="w-full text-center border tkc-blue-border text-[12px]">
+                                <thead class="bg-slate-50 text-slate-700 font-bold border-b tkc-blue-border">
+                                    <tr><th class="py-1.5 border-r tkc-blue-border">구분</th><th class="py-1.5">출석 인원</th></tr>
                                 </thead>
-                                <tbody>
-                                    <tr>
-                                        <td class="py-2 text-blue-800 font-black">${mainTotal}명</td>
-                                        <td class="py-2 font-bold">${yTotal}</td><td class="py-2 font-bold">${mTotal}</td><td class="py-2 font-bold">${eTotal}</td><td class="py-2 font-bold">${kTotal}</td>
-                                    </tr>
+                                <tbody class="font-bold text-slate-800">
+                                    <tr class="border-b tkc-blue-border"><td class="py-1.5 border-r tkc-blue-border">1부 예배</td><td class="py-1.5 text-blue-700">${total1}</td></tr>
+                                    <tr class="border-b tkc-blue-border"><td class="py-1.5 border-r tkc-blue-border">2부 예배</td><td class="py-1.5 text-blue-700">${total2}</td></tr>
+                                    <tr class="bg-blue-50 text-blue-900 font-black"><td class="py-1.5 border-r tkc-blue-border">대예배 소계</td><td class="py-1.5">${mainTotal} 명</td></tr>
                                 </tbody>
                             </table>
                         </div>
+
                         <div>
-                            <p class="text-[13px] font-black text-slate-800 mb-1.5 flex items-center gap-1">📊 최근 4주 전교인 출석 추이</p>
-                            <div class="border border-slate-200 rounded-xl p-2 bg-white" style="position: relative; height: 130px; width: 100%;">
+                            <p class="text-[13px] font-black text-slate-800 mb-1.5 flex items-center gap-1">2. 부서별 출석 통계 <span class="text-[10px] text-gray-400 font-normal">(최근 4주)</span></p>
+                            <table class="w-full text-center border tkc-blue-border text-[12px]">
+                                <thead class="bg-slate-50 text-slate-700 font-bold border-b tkc-blue-border">
+                                    <tr><th class="py-1 border-r tkc-blue-border">부서</th><th class="py-1 border-r tkc-blue-border text-blue-700">금주</th><th class="py-1 border-r tkc-blue-border">1주전</th><th class="py-1 border-r tkc-blue-border">2주전</th><th class="py-1">3주전</th></tr>
+                                </thead>
+                                <tbody class="font-bold text-slate-700">
+                                    <tr class="border-b tkc-blue-border"><td class="py-1 border-r tkc-blue-border">청년</td><td class="py-1 border-r tkc-blue-border text-blue-700 font-black">${yTotal}</td><td class="py-1 border-r tkc-blue-border">${historyData['청년부'][2]}</td><td class="py-1 border-r tkc-blue-border">${historyData['청년부'][1]}</td><td class="py-1">${historyData['청년부'][0]}</td></tr>
+                                    <tr class="border-b tkc-blue-border"><td class="py-1 border-r tkc-blue-border">중고등</td><td class="py-1 border-r tkc-blue-border text-blue-700 font-black">${mTotal}</td><td class="py-1 border-r tkc-blue-border">${historyData['중고등부'][2]}</td><td class="py-1 border-r tkc-blue-border">${historyData['중고등부'][1]}</td><td class="py-1">${historyData['중고등부'][0]}</td></tr>
+                                    <tr class="border-b tkc-blue-border"><td class="py-1 border-r tkc-blue-border">유초등</td><td class="py-1 border-r tkc-blue-border text-blue-700 font-black">${eTotal}</td><td class="py-1 border-r tkc-blue-border">${historyData['유초등부'][2]}</td><td class="py-1 border-r tkc-blue-border">${historyData['유초등부'][1]}</td><td class="py-1">${historyData['유초등부'][0]}</td></tr>
+                                    <tr class="border-b tkc-blue-border"><td class="py-1 border-r tkc-blue-border">유아/유치</td><td class="py-1 border-r tkc-blue-border text-blue-700 font-black">${kTotal}</td><td class="py-1 border-r tkc-blue-border">${historyData['유치부'][2]}</td><td class="py-1 border-r tkc-blue-border">${historyData['유치부'][1]}</td><td class="py-1">${historyData['유치부'][0]}</td></tr>
+                                    <tr class="bg-slate-100 text-slate-800 font-black"><td class="py-1 border-r tkc-blue-border">교육부서 합</td><td class="py-1 border-r tkc-blue-border">${deptTotal}</td><td class="py-1 border-r tkc-blue-border">${historyData['청년부'][2]+historyData['중고등부'][2]+historyData['유초등부'][2]+historyData['유치부'][2]}</td><td class="py-1 border-r tkc-blue-border">${historyData['청년부'][1]+historyData['중고등부'][1]+historyData['유초등부'][1]+historyData['유치부'][1]}</td><td class="py-1">${historyData['청년부'][0]+historyData['중고등부'][0]+historyData['유초등부'][0]+historyData['유치부'][0]}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div>
+                            <p class="text-[13px] font-black text-slate-800 mb-1.5 flex items-center gap-1">📊 최근 4주 출석 추이 <span class="text-[10px] text-gray-400 font-normal ml-1">(전교인 총합)</span></p>
+                            <div class="border border-slate-200 rounded-xl p-2 bg-white mb-4" style="position: relative; height: 110px; width: 100%;">
                                 <canvas id="trendChart"></canvas>
+                            </div>
+                            
+                            <div class="bg-indigo-900 p-4 rounded-xl flex justify-between items-center shadow-lg">
+                                <div><p class="text-indigo-200 text-[10px] font-bold mb-0.5 uppercase tracking-wider">Total Attendance</p><p class="text-[15px] font-black text-white">총 출석 인원</p></div>
+                                <div class="text-right"><span class="text-3xl font-black text-white tracking-tighter">${grandTotal}</span><span class="text-[15px] font-bold text-indigo-200 ml-1">명</span></div>
                             </div>
                         </div>
                     </div>
@@ -381,23 +406,17 @@
                     return list.sort().join(' ');
                 };
                 
-                // 직분자
                 const p1_jik = getPList(['1부_직분자'], presentSet1);
                 const p2_jik = getPList(['2부_직분자'], presentSet2);
-                // 등록교인
                 const p1_reg = getPList(['1부_등록교인'], presentSet1);
                 const p2_reg = getPList(['2부_등록교인'], presentSet2);
-                // 미등록교인
                 const p1_unreg = getPList(['미등록교인', '미분류_교인'], presentSet1);
                 const p2_unreg = getPList(['미등록교인', '미분류_교인'], presentSet2);
-                // 청년부
-                const p1_youth = getPList(['청년부'], presentSet1); // 보통 1부엔 없지만 안전하게
+                const p1_youth = getPList(['청년부'], presentSet1); 
                 const p2_youth = getPList(['청년부'], presentSet2);
-                // 방문자
                 const v1_str = [...vNew1.map(v=>`${v.name}(${v.reason})`), ...visitorsRecurring.filter(v=>v.service===1).map(v=>`${v.name}(방문)`)].join(', ') || '';
                 const v2_str = [...vNew2.map(v=>`${v.name}(${v.reason})`), ...visitorsRecurring.filter(v=>v.service===2).map(v=>`${v.name}(방문)`)].join(', ') || '';
                 
-                // 결석자 사유 텍스트화
                 const absKeys = Object.keys(absenteeReasons).sort();
                 let absRows = absKeys.map(name => `[${name}] ${absenteeReasons[name]}`).join(' / ');
                 if(absKeys.length === 0) absRows = `작성된 결석 사유가 없습니다.`;
@@ -487,7 +506,7 @@
 
             if(type === 1 && typeof Chart !== 'undefined') {
                 setTimeout(async () => { 
-                    // 🚨 4주치 전교인 그래프 렌더링!
+                    // 🚨 4주치 전교인 그래프 렌더링 (모바일 완벽 호환!)
                     const week3Total = historyData['1부'][0] + historyData['2부'][0] + historyData['청년부'][0] + historyData['중고등부'][0] + historyData['유초등부'][0] + historyData['유치부'][0]; 
                     const week2Total = historyData['1부'][1] + historyData['2부'][1] + historyData['청년부'][1] + historyData['중고등부'][1] + historyData['유초등부'][1] + historyData['유치부'][1]; 
                     const week1Total = historyData['1부'][2] + historyData['2부'][2] + historyData['청년부'][2] + historyData['중고등부'][2] + historyData['유초등부'][2] + historyData['유치부'][2]; 
@@ -517,12 +536,12 @@
                             plugins: { legend: { display: false } }, 
                             scales: { 
                                 y: { display: false, min: 200 }, 
-                                x: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold' }, color: '#64748b' } } 
+                                x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#64748b' } } 
                             }, 
                             animation: { duration: 0 } 
                         } 
                     }); 
-                }, 200); // 안정적 렌더링을 위한 딜레이
+                }, 200); 
             }
         }
 
