@@ -22,7 +22,7 @@
         .status-visitor { background-color: #ea580c; color: white; border: 1.5px solid #9a3412; }
         .add-btn { background-color: #eff6ff; color: #3b82f6; border: 2px dashed #93c5fd; font-size: 20px !important; }
         
-        /* 📱 탭(Tablet) 접속 시 시원시원한 왕글씨 적용! */
+        /* 📱 탭(Tablet) 접속 시 시원시원한 왕글씨 적용! (형이 요청한 부분 완벽 보존) */
         @media (min-width: 768px) {
             .member-btn { font-size: 20px; padding-top: 1.25rem; padding-bottom: 1.25rem; }
             .add-btn { font-size: 26px !important; }
@@ -34,6 +34,8 @@
         @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(234, 88, 12, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); } }
         
         #report-modal, #absentee-modal, #report-view { display: none; }
+        
+        /* 보고서 A4 사이즈 강제 고정 (찌그러짐 방지 핵심!) */
         .a4-page { width: 210mm; min-height: 297mm; background: white; padding: 15mm 20mm; box-sizing: border-box; box-shadow: 0 10px 20px rgba(0,0,0,0.2); margin: 0 auto; }
         .tkc-blue { color: #1e3a8a; } .tkc-blue-border { border-color: #1e3a8a; }
         
@@ -97,7 +99,7 @@
             </div>
             <button onclick="openAbsenteeModal()" class="w-full bg-orange-100 text-orange-700 border border-orange-300 py-3 rounded-xl font-black text-sm mb-6 active:scale-95 flex justify-between px-4 items-center"><span>✍️ 결석자 사유 입력하기</span><span id="absentee-count-badge" class="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">0명 완료</span></button>
             <div class="space-y-2">
-                <button onclick="generateReport(1)" class="w-full bg-blue-700 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">1. 📊 예배 종합 보고서 (요약)</button>
+                <button onclick="generateReport(1)" class="w-full bg-blue-700 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">1. 📊 예배 종합 보고서 (전교인 통합)</button>
                 <button onclick="generateReport(2)" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">2. ✅ 대예배 상세 출석부</button>
                 <button onclick="generateReport(3)" class="w-full bg-teal-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">3. 🌐 전교인 통합 출석부</button>
                 <button onclick="generateReport(4)" class="w-full bg-red-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">4. ❌ 결석자/심방 보고서</button>
@@ -274,16 +276,89 @@
         window.closeAbsenteeModal = function() { document.getElementById('absentee-modal').style.display = 'none'; }
         function updateAbsenteeBadge() { document.getElementById('absentee-count-badge').innerText = `${Object.keys(absenteeReasons).length}명 작성됨`; }
 
+        // 🚨 찐최종 업데이트: 2단 레이아웃 및 전체 부서 총합 차트 반영
         window.generateReport = async function(type) {
             const targetDate = document.getElementById('today-date').value.replace(/-/g, '. ');
             const preacher = document.getElementById('rep-preacher').value || "담임목사"; const scripture = document.getElementById('rep-scripture').value || "미입력"; const title = document.getElementById('rep-title').value || "미입력"; const pray = document.getElementById('rep-pray').value || "미입력"; const note = document.getElementById('rep-note').value || "특이사항 없음";
             const vNew1 = visitorsNew.filter(v=>v.service===1); const vNew2 = visitorsNew.filter(v=>v.service===2);
-            const total1 = presentSet1.size + vNew1.length + visitorsRecurring.filter(v=>v.service===1).length; const total2 = presentSet2.size + vNew2.length + visitorsRecurring.filter(v=>v.service===2).length; const grandTotal = total1 + total2;
+            const total1 = presentSet1.size + vNew1.length + visitorsRecurring.filter(v=>v.service===1).length; 
+            const total2 = presentSet2.size + vNew2.length + visitorsRecurring.filter(v=>v.service===2).length; 
+            
             let html = "";
 
             if (type === 1) {
+                // DB에서 오늘 날짜의 '모든' 부서 데이터를 한 번에 싹 다 가져오기
+                const snap = await db.ref('attendance/' + document.getElementById('today-date').value).once('value');
+                const todayAllData = snap.val() || {};
+                
+                // 각 교육부서 총원 추출 (없으면 0)
+                const youthTotal = todayAllData['청년부']?.totalPresent || 0;
+                const midHighTotal = todayAllData['중고등부']?.totalPresent || 0;
+                const elemTotal = todayAllData['유초등부']?.totalPresent || 0;
+                const kinderTotal = todayAllData['유치부']?.totalPresent || 0;
+                
+                // 🚀 대예배 + 교육부서 전교인 그랜드 토탈!
+                const grandTotal = total1 + total2 + youthTotal + midHighTotal + elemTotal + kinderTotal;
+
                 const visHtml = [...vNew1.map(v=>`[1부] ${v.name}(${v.reason})`), ...vNew2.map(v=>`[2부] ${v.name}(${v.reason})`)].join(' / ') || "없음";
-                html = `<div class="flex justify-between items-end border-b-4 tkc-blue-border pb-3 mb-8"><div><h1 class="text-4xl font-black tkc-blue tracking-tighter">예배 종합 보고서</h1><p class="text-xs font-bold text-gray-400 mt-1 uppercase">Tashkent Korean Church</p></div><div class="text-right"><p class="text-2xl font-black tkc-blue tracking-tight">${targetDate}</p></div></div><div class="grid grid-cols-2 gap-8 mb-8"><div class="space-y-6"><div><h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">📖 예배 정보</h2><div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3"><p class="text-sm font-bold text-slate-800"><span class="text-blue-500 mr-2">설교/기도</span> ${preacher} / ${pray}</p><p class="text-sm font-black text-slate-800"><span class="text-blue-500 mr-2">성경본문</span> ${scripture}</p><p class="text-base font-black text-blue-900"><span class="text-blue-500 mr-2 text-sm">설교제목</span> ${title}</p></div></div><div><h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">🌱 새 방문자 (첫 방문)</h2><div class="bg-orange-50 p-4 rounded-xl border border-orange-200 text-sm font-bold text-orange-900">${visHtml}</div></div><div><h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">📝 특이사항</h2><div class="bg-blue-50 p-4 rounded-xl border border-blue-100 min-h-[100px] text-sm font-bold text-slate-700 whitespace-pre-line">${note}</div></div></div><div class="space-y-6"><div><h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">👥 출석 통계</h2><div class="grid grid-cols-2 gap-3 mb-3"><div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center"><p class="text-xs font-bold text-slate-500 mb-1">1부 예배</p><p class="text-2xl font-black text-blue-800">${total1}명</p></div><div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center"><p class="text-xs font-bold text-slate-500 mb-1">2부 예배</p><p class="text-2xl font-black text-blue-800">${total2}명</p></div></div><div class="bg-blue-900 p-5 rounded-xl flex justify-between items-center shadow-lg"><div><p class="text-blue-200 text-xs font-bold mb-1 uppercase">Grand Total</p><p class="text-lg font-black text-white">대예배 총 출석</p></div><div class="text-right"><span class="text-4xl font-black text-white tracking-tighter">${grandTotal}</span><span class="text-lg font-bold text-blue-200 ml-1">명</span></div></div></div><div><h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">📊 4주 추이</h2><div class="border border-slate-200 rounded-xl p-4 bg-white flex justify-center" id="chart-container"><canvas id="trendChart" style="max-height: 180px; width: 100%;"></canvas></div></div></div></div>`;
+                
+                // 2단 분할 레이아웃(grid-cols-2) 및 부서별 통계 표 반영
+                html = `
+                <div class="flex justify-between items-end border-b-4 tkc-blue-border pb-3 mb-8">
+                    <div><h1 class="text-4xl font-black tkc-blue tracking-tighter">예배 종합 보고서</h1><p class="text-xs font-bold text-gray-400 mt-1 uppercase">Tashkent Korean Church</p></div>
+                    <div class="text-right"><p class="text-2xl font-black tkc-blue tracking-tight">${targetDate}</p></div>
+                </div>
+                <div class="grid grid-cols-2 gap-8 mb-8">
+                    <div class="space-y-6">
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">📖 예배 정보</h2>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                                <p class="text-sm font-bold text-slate-800"><span class="text-blue-500 mr-2">설교/기도</span> ${preacher} / ${pray}</p>
+                                <p class="text-sm font-black text-slate-800"><span class="text-blue-500 mr-2">성경본문</span> ${scripture}</p>
+                                <p class="text-base font-black text-blue-900"><span class="text-blue-500 mr-2 text-sm">설교제목</span> ${title}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">🌱 대예배 새 방문자</h2>
+                            <div class="bg-orange-50 p-4 rounded-xl border border-orange-200 text-sm font-bold text-orange-900">${visHtml}</div>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">📝 특이사항</h2>
+                            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 min-h-[100px] text-sm font-bold text-slate-700 whitespace-pre-line">${note}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">👥 출석 통계 (전교인)</h2>
+                            <table class="w-full text-center border-2 tkc-blue-border text-sm mb-4 table-fixed">
+                                <thead class="bg-slate-100 text-slate-600 font-bold border-b">
+                                    <tr><th class="py-2 border-r">대예배 소계</th><th class="py-2 border-r">청년</th><th class="py-2 border-r">중고등</th><th class="py-2 border-r">유초등</th><th class="py-2">유치</th></tr>
+                                </thead>
+                                <tbody class="font-black text-slate-800">
+                                    <tr>
+                                        <td class="py-3 border-r text-blue-800 text-lg">${total1 + total2}명</td>
+                                        <td class="py-3 border-r text-base">${youthTotal}</td>
+                                        <td class="py-3 border-r text-base">${midHighTotal}</td>
+                                        <td class="py-3 border-r text-base">${elemTotal}</td>
+                                        <td class="py-3 text-base">${kinderTotal}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <div class="bg-blue-900 p-5 rounded-xl flex justify-between items-center shadow-lg">
+                                <div><p class="text-blue-200 text-xs font-bold mb-1 uppercase">Grand Total</p><p class="text-lg font-black text-white">전교인 총 출석</p></div>
+                                <div class="text-right"><span class="text-4xl font-black text-white tracking-tighter">${grandTotal}</span><span class="text-lg font-bold text-blue-200 ml-1">명</span></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-black tkc-blue border-b-2 border-blue-900 pb-1 mb-4">📊 최근 4주 총합 추이</h2>
+                            <div class="border border-slate-200 rounded-xl p-4 bg-white flex justify-center" id="chart-container">
+                                <canvas id="trendChart" style="max-height: 150px; width: 100%;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
             } else if (type === 2) {
                 const getNames = (set, visitors) => { let n = Array.from(set).sort(); if(visitors && visitors.length>0) n.push(...visitors.map(v=>`[방]${v.name}`)); return n.join(', ') || '-'; };
                 html = `<div class="flex justify-between items-end border-b-4 tkc-blue-border pb-3 mb-8"><div><h1 class="text-4xl font-black tkc-blue tracking-tighter">대예배 상세 출석부</h1><p class="text-xs font-bold text-gray-400 mt-1 uppercase">Tashkent Korean Church</p></div><div class="text-right"><p class="text-2xl font-black tkc-blue tracking-tight">${targetDate}</p></div></div><table class="w-full border-2 tkc-blue-border text-sm mb-6"><tbody class="text-left font-bold text-slate-800"><tr class="border-b border-slate-300"><td class="py-4 px-4 bg-blue-50 border-r border-slate-300 w-28 text-center font-black text-blue-900">1부 예배</td><td class="py-4 px-4 leading-relaxed">${getNames(presentSet1, [...vNew1, ...visitorsRecurring.filter(v=>v.service===1)])}</td></tr><tr><td class="py-4 px-4 bg-blue-50 border-r border-slate-300 w-28 text-center font-black text-blue-900">2부 예배</td><td class="py-4 px-4 leading-relaxed">${getNames(presentSet2, [...vNew2, ...visitorsRecurring.filter(v=>v.service===2)])}</td></tr></tbody></table>`;
@@ -301,7 +376,31 @@
             setTimeout(scaleReport, 50);
 
             if(type === 1 && typeof Chart !== 'undefined') {
-                setTimeout(() => { db.ref('attendance').orderByKey().limitToLast(4).once('value').then((snapshot) => { let historyData = []; let labels = []; if (snapshot.exists()) { snapshot.forEach(child => { labels.push(child.key.slice(5)); historyData.push((child.val()['1부']?.totalPresent||0) + (child.val()['2부']?.totalPresent||0)); }); } const ctx = document.getElementById('trendChart').getContext('2d'); if (chartInstance) chartInstance.destroy(); chartInstance = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ data: historyData, borderColor: '#1e3a8a', backgroundColor: 'rgba(37,99,235,0.1)', borderWidth: 3, pointBackgroundColor: '#ea580c', pointRadius: 6, fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [4, 4] } }, x: { grid: { display: false }, ticks: { font: { size: 12, weight: 'bold' } } } }, animation: { duration: 0 } } }); }); }, 100);
+                setTimeout(() => { 
+                    db.ref('attendance').orderByKey().limitToLast(4).once('value').then((snapshot) => { 
+                        let historyData = []; let labels = []; 
+                        if (snapshot.exists()) { 
+                            snapshot.forEach(child => { 
+                                labels.push(child.key.slice(5)); 
+                                // 🚀 대예배뿐만 아니라 교육부서까지 모조리 합쳐서 차트에 그리기!
+                                let weeklyGrandTotal = (child.val()['1부']?.totalPresent||0) + 
+                                                       (child.val()['2부']?.totalPresent||0) +
+                                                       (child.val()['청년부']?.totalPresent||0) +
+                                                       (child.val()['중고등부']?.totalPresent||0) +
+                                                       (child.val()['유초등부']?.totalPresent||0) +
+                                                       (child.val()['유치부']?.totalPresent||0);
+                                historyData.push(weeklyGrandTotal); 
+                            }); 
+                        } 
+                        const ctx = document.getElementById('trendChart').getContext('2d'); 
+                        if (chartInstance) chartInstance.destroy(); 
+                        chartInstance = new Chart(ctx, { 
+                            type: 'line', 
+                            data: { labels: labels, datasets: [{ data: historyData, borderColor: '#1e3a8a', backgroundColor: 'rgba(37,99,235,0.1)', borderWidth: 3, pointBackgroundColor: '#ea580c', pointRadius: 6, fill: true, tension: 0.3 }] }, 
+                            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [4, 4] } }, x: { grid: { display: false }, ticks: { font: { size: 12, weight: 'bold' } } } }, animation: { duration: 0 } } 
+                        }); 
+                    }); 
+                }, 100);
             }
         }
 
