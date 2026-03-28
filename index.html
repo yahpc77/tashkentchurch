@@ -22,7 +22,7 @@
         .status-visitor { background-color: #ea580c; color: white; border: 1.5px solid #9a3412; }
         .add-btn { background-color: #eff6ff; color: #3b82f6; border: 2px dashed #93c5fd; font-size: 20px !important; }
         
-        /* 📱 탭(Tablet) 접속 시 시원시원한 왕글씨 적용! (형이 요청한 부분 완벽 보존) */
+        /* 📱 탭(Tablet) 접속 시 시원시원한 왕글씨 적용! */
         @media (min-width: 768px) {
             .member-btn { font-size: 20px; padding-top: 1.25rem; padding-bottom: 1.25rem; }
             .add-btn { font-size: 26px !important; }
@@ -35,8 +35,8 @@
         
         #report-modal, #absentee-modal, #report-view { display: none; }
         
-        /* 보고서 A4 사이즈 강제 고정 (찌그러짐 방지 핵심!) */
-        .a4-page { width: 210mm; min-height: 297mm; background: white; padding: 15mm 20mm; box-sizing: border-box; box-shadow: 0 10px 20px rgba(0,0,0,0.2); margin: 0 auto; }
+        /* 🚨 모바일 찌그러짐 원천 차단! px로 강제 고정 */
+        .a4-page { width: 794px !important; max-width: 794px !important; min-height: 1123px; background: white; padding: 40px 50px; box-sizing: border-box; box-shadow: 0 10px 20px rgba(0,0,0,0.2); margin: 0 auto; transform-origin: top center; }
         .tkc-blue { color: #1e3a8a; } .tkc-blue-border { border-color: #1e3a8a; }
         
         @media print {
@@ -44,7 +44,7 @@
             #main-app, #report-modal, #absentee-modal, .no-print { display: none !important; }
             #report-view { display: block !important; padding: 0; background: white; }
             #report-container { height: auto !important; }
-            .a4-page { box-shadow: none; width: 100%; padding: 10mm; transform: none !important; margin: 0 !important; }
+            .a4-page { box-shadow: none; width: 100% !important; max-width: 100% !important; padding: 10mm; transform: none !important; margin: 0 !important; }
         }
     </style>
 </head>
@@ -119,7 +119,7 @@
             <button onclick="closeReportView()" class="flex-1 max-w-[200px] bg-slate-700 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg">🔙 뒤로가기</button>
             <button onclick="window.print()" class="flex-1 max-w-[200px] bg-blue-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg">🖨️ 인쇄하기</button>
         </div>
-        <div id="report-container" class="w-full flex justify-center overflow-hidden">
+        <div id="report-container" class="w-full flex justify-center overflow-x-hidden">
             <div class="a4-page relative" id="a4-content"></div>
         </div>
     </div>
@@ -141,7 +141,6 @@
         function initApp() {
             document.getElementById('today-date').value = new Date().toISOString().split('T')[0];
             
-            // 🧠 스마트 메모리: 마지막 탭 기억하기
             let savedMode = localStorage.getItem('tkc_dae_mode');
             if(savedMode) currentMode = parseInt(savedMode);
 
@@ -158,7 +157,7 @@
 
         function setMode(mode) {
             currentMode = mode;
-            localStorage.setItem('tkc_dae_mode', mode); // 🧠 기억 장치 저장
+            localStorage.setItem('tkc_dae_mode', mode); 
             document.getElementById('mode-btn-1').className = mode === 1 ? "flex-1 py-3 text-base font-black rounded-lg shadow-sm bg-white text-blue-700 transition-all border border-blue-200 section-title" : "flex-1 py-3 text-base font-bold rounded-lg text-slate-500 transition-all bg-transparent section-title";
             document.getElementById('mode-btn-2').className = mode === 2 ? "flex-1 py-3 text-base font-black rounded-lg shadow-sm bg-white text-blue-700 transition-all border border-blue-200 section-title" : "flex-1 py-3 text-base font-bold rounded-lg text-slate-500 transition-all bg-transparent section-title";
             document.getElementById('current-mode-label').innerText = mode + "부";
@@ -243,13 +242,13 @@
         window.closeReportCenter = function() { document.getElementById('report-modal').style.display = 'none'; }
         window.closeReportView = function() { document.getElementById('report-view').style.display = 'none'; document.getElementById('main-app').style.display = 'block'; }
 
-        // 🔍 모바일 A4 자동 축소 로직 (텔레그램 스샷 최적화)
+        // 🔍 모바일 A4 자동 축소 로직
         function scaleReport() {
             const container = document.getElementById('report-container');
             const page = document.getElementById('a4-content');
             const w = window.innerWidth;
             if(w < 820) { // 모바일 화면이면
-                const scale = (w - 20) / 794; // 20px는 여백
+                const scale = (w - 20) / 794; 
                 page.style.transform = `scale(${scale})`;
                 page.style.transformOrigin = 'top center';
                 container.style.height = `${page.offsetHeight * scale}px`;
@@ -276,7 +275,6 @@
         window.closeAbsenteeModal = function() { document.getElementById('absentee-modal').style.display = 'none'; }
         function updateAbsenteeBadge() { document.getElementById('absentee-count-badge').innerText = `${Object.keys(absenteeReasons).length}명 작성됨`; }
 
-        // 🚨 찐최종 업데이트: 2단 레이아웃 및 전체 부서 총합 차트 반영
         window.generateReport = async function(type) {
             const targetDate = document.getElementById('today-date').value.replace(/-/g, '. ');
             const preacher = document.getElementById('rep-preacher').value || "담임목사"; const scripture = document.getElementById('rep-scripture').value || "미입력"; const title = document.getElementById('rep-title').value || "미입력"; const pray = document.getElementById('rep-pray').value || "미입력"; const note = document.getElementById('rep-note').value || "특이사항 없음";
@@ -287,22 +285,17 @@
             let html = "";
 
             if (type === 1) {
-                // DB에서 오늘 날짜의 '모든' 부서 데이터를 한 번에 싹 다 가져오기
                 const snap = await db.ref('attendance/' + document.getElementById('today-date').value).once('value');
                 const todayAllData = snap.val() || {};
                 
-                // 각 교육부서 총원 추출 (없으면 0)
                 const youthTotal = todayAllData['청년부']?.totalPresent || 0;
                 const midHighTotal = todayAllData['중고등부']?.totalPresent || 0;
                 const elemTotal = todayAllData['유초등부']?.totalPresent || 0;
                 const kinderTotal = todayAllData['유치부']?.totalPresent || 0;
                 
-                // 🚀 대예배 + 교육부서 전교인 그랜드 토탈!
                 const grandTotal = total1 + total2 + youthTotal + midHighTotal + elemTotal + kinderTotal;
-
                 const visHtml = [...vNew1.map(v=>`[1부] ${v.name}(${v.reason})`), ...vNew2.map(v=>`[2부] ${v.name}(${v.reason})`)].join(' / ') || "없음";
                 
-                // 2단 분할 레이아웃(grid-cols-2) 및 부서별 통계 표 반영
                 html = `
                 <div class="flex justify-between items-end border-b-4 tkc-blue-border pb-3 mb-8">
                     <div><h1 class="text-4xl font-black tkc-blue tracking-tighter">예배 종합 보고서</h1><p class="text-xs font-bold text-gray-400 mt-1 uppercase">Tashkent Korean Church</p></div>
@@ -372,7 +365,6 @@
             document.getElementById('a4-content').innerHTML = html;
             closeReportCenter(); document.getElementById('main-app').style.display = 'none'; document.getElementById('report-view').style.display = 'block';
 
-            // 모바일 핏 맞추기
             setTimeout(scaleReport, 50);
 
             if(type === 1 && typeof Chart !== 'undefined') {
@@ -382,7 +374,6 @@
                         if (snapshot.exists()) { 
                             snapshot.forEach(child => { 
                                 labels.push(child.key.slice(5)); 
-                                // 🚀 대예배뿐만 아니라 교육부서까지 모조리 합쳐서 차트에 그리기!
                                 let weeklyGrandTotal = (child.val()['1부']?.totalPresent||0) + 
                                                        (child.val()['2부']?.totalPresent||0) +
                                                        (child.val()['청년부']?.totalPresent||0) +
