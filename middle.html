@@ -29,12 +29,12 @@
             .section-title { font-size: 22px; }
         }
         
+        /* 🚨 이 노란색 하이라이트가 모든 교사 버튼을 덮어버렸던 범인! */
         .highlight-search { animation: pulse-border 1.2s infinite; background-color: #fef08a !important; color: #b45309 !important; border: 2.5px solid #ea580c !important; transform: scale(1.05) !important; z-index: 10 !important; }
         @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(234, 88, 12, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); } }
         
         #report-modal, #absentee-modal, #report-view { display: none; }
         
-        /* 🚨 모바일 찌그러짐 원천 차단! 절대 폭 794px 강제 고정 */
         #report-container { width: 100%; display: flex; justify-content: center; overflow-x: hidden; }
         .a4-page { width: 794px !important; min-width: 794px !important; max-width: 794px !important; min-height: 1123px; background: white; padding: 30px 40px; box-sizing: border-box; box-shadow: 0 10px 20px rgba(0,0,0,0.2); margin: 0 auto; transform-origin: top center; }
         .tkc-blue { color: #1e3a8a; } .tkc-blue-border { border-color: #1e3a8a; }
@@ -207,17 +207,18 @@
             getSortedGroups(allDeptData).forEach(groupKey => {
                 const info = parseGroupInfo(groupKey); if (!info) return;
                 let membersArr = allDeptData[groupKey] || []; let displayMembers = membersArr.filter(m => m.trim() !== info.leaderName);
-                let isLeaderMatch = info.leaderName && info.leaderName.includes(keyword); let filteredMembers = displayMembers.filter(m => m.includes(keyword));
+                
+                // 🚨 버그 픽스! 검색어가 있을 때만 하이라이트 되도록 안전장치 추가
+                let isLeaderMatch = keyword ? (info.leaderName && info.leaderName.includes(keyword)) : false;
+                let filteredMembers = displayMembers.filter(m => m.includes(keyword));
                 if (keyword && !isLeaderMatch && filteredMembers.length === 0) return;
                 
                 const section = document.createElement('div'); section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
                 
-                // 🚨 교사 이름 버튼 색상 완벽 수정 (학생과 완전히 동일한 클래스 적용!)
                 let leaderBtnHtml = '';
                 if(info.leaderName) {
                     const cleanLeaderName = info.leaderName.trim();
                     const isLeaderPresent = presentSet.has(cleanLeaderName);
-                    // 학생과 완벽하게 똑같이 status-present / status-absent 적용
                     const leaderBtnClass = isLeaderPresent ? 'status-present' : 'status-absent';
                     leaderBtnHtml = `<button onclick="toggleAttendance('${cleanLeaderName}')" class="member-btn px-4 py-1.5 text-[14px] ${leaderBtnClass} ${isLeaderMatch ? 'highlight-search' : ''}">👨‍🏫 ${cleanLeaderName}</button>`;
                 }
