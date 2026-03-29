@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>⛪ 통합 부서 마스터 V7 (실시간 연동)</title>
+    <title>⛪ 청년부 출석 마스터 V7</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -35,19 +34,19 @@
         #report-modal, #absentee-modal, #report-view { display: none; }
         
         /* 🚨 모바일 찌그러짐 원천 차단! 절대 폭 794px 강제 고정 */
-        #report-container { width: 100%; display: flex; justify-content: center; overflow-x: hidden; }
-        .a4-page { width: 794px !important; min-width: 794px !important; max-width: 794px !important; min-height: 1123px; background: white; padding: 30px 40px; box-sizing: border-box; box-shadow: 0 10px 20px rgba(0,0,0,0.2); margin: 0 auto; transform-origin: top center; }
-        .tkc-blue { color: #1e3a8a; } .tkc-blue-border { border-color: #1e3a8a; }
+        #report-container { width: 100%; display: flex; justify-content: center; overflow-x: hidden; background: #e5e7eb; padding: 20px 0; }
+        .a4-page { width: 794px !important; min-width: 794px !important; max-width: 794px !important; min-height: 1123px; background: white; padding: 40px 50px; box-sizing: border-box; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin: 0 auto; transform-origin: top center; }
         
         /* 옛날 보고서 스타일 완벽 구현을 위한 표 밀도 조절 */
-        .dense-table th, .dense-table td { padding: 4px 6px; border: 1px solid #000000; word-break: keep-all; }
-        .dense-table th { background-color: #f1f5f9; color: #334155; font-weight: 900; }
+        .dense-table th, .dense-table td { padding: 8px 6px; border-bottom: 1px solid #cbd5e1; word-break: keep-all; text-align: center; }
+        .dense-table th { background-color: #f1f5f9; color: #334155; font-weight: 900; border-top: 2px solid #1e3a8a; border-bottom: 2px solid #cbd5e1; }
+        .dense-table tr:last-child td { border-bottom: 2px solid #1e3a8a; }
         
         @media print {
             body { background-color: white; margin: 0; padding: 0; }
             #main-app, #report-modal, #absentee-modal, .no-print { display: none !important; }
             #report-view { display: block !important; padding: 0; background: white; }
-            #report-container { height: auto !important; }
+            #report-container { height: auto !important; padding: 0; background: white; }
             .a4-page { box-shadow: none; width: 100% !important; max-width: 100% !important; padding: 10mm; transform: none !important; margin: 0 !important; }
         }
     </style>
@@ -57,7 +56,7 @@
     <div id="main-app">
         <div class="bg-white shadow-sm px-3 py-3 border-b-4 border-indigo-700">
             <div class="flex justify-between items-center mb-3">
-                <h1 id="app-title" class="text-lg font-black text-indigo-900 tracking-tight section-title">⛪ 부서명 출석부 V7</h1>
+                <h1 id="app-title" class="text-lg font-black text-indigo-900 tracking-tight section-title">⛪ 푸른 청년부 V7</h1>
                 <input type="date" id="today-date" class="text-sm font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded border border-gray-300 outline-none">
             </div>
 
@@ -80,7 +79,7 @@
                 <p class="text-3xl font-black text-indigo-700"><span id="count-display">0</span><span class="text-sm text-gray-600 font-bold ml-1">명</span></p>
             </div>
             <div class="flex gap-2">
-                <button onclick="submitReportDetails()" class="bg-indigo-800 text-white px-4 py-3 rounded-xl font-black text-sm shadow-lg active:scale-95 section-title">💾 최종마감(사유)</button>
+                <button onclick="submitReportDetails()" class="bg-indigo-800 text-white px-4 py-3 rounded-xl font-black text-sm shadow-lg active:scale-95 section-title">💾 최종마감</button>
                 <button onclick="openReportCenter()" class="bg-blue-600 text-white px-4 py-3 rounded-xl font-black text-sm shadow-lg active:scale-95 section-title">📑 보고서 작성</button>
             </div>
         </div>
@@ -90,14 +89,13 @@
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border-t-8 border-indigo-600 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-black text-indigo-900 tracking-tight">🗂️ 보고서 센터</h2><button onclick="closeReportCenter()" class="text-gray-400 font-bold text-xl">&times;</button></div>
             <div class="space-y-2 mb-6 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                <input type="text" id="rep-preacher" placeholder="설교자" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
-                <input type="text" id="rep-scripture" placeholder="말씀 본문" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
+                <input type="text" id="rep-preacher" placeholder="설교자 (예: 정재호 목사)" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
+                <input type="text" id="rep-scripture" placeholder="말씀 본문 (예: 마태복음 25장)" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
                 <input type="text" id="rep-title" placeholder="설교 제목" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
                 <input type="text" id="rep-vice-preacher" placeholder="대표 기도자" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
-                <textarea id="rep-note" placeholder="특이사항 요약..." class="w-full border border-slate-300 rounded p-2 text-sm font-bold h-16 outline-none resize-none"></textarea>
             </div>
-            <button onclick="openAbsenteeModal()" class="w-full bg-orange-100 text-orange-700 border border-orange-300 py-3 rounded-xl font-black text-sm mb-6 active:scale-95 flex justify-between px-4 items-center"><span>✍️ 결석자 사유 입력</span><span id="absentee-count-badge" class="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">0명 완료</span></button>
-            <button onclick="generateA4Report()" class="w-full bg-indigo-700 text-white py-4 rounded-xl font-black text-base shadow-lg active:scale-95 text-center">🚀 예배 일지(PDF/A4) 생성</button>
+            <button onclick="openAbsenteeModal()" class="w-full bg-orange-100 text-orange-700 border border-orange-300 py-3 rounded-xl font-black text-sm mb-6 active:scale-95 flex justify-between px-4 items-center"><span>✍️ 결석자 사유 / 특이사항 입력</span><span id="absentee-count-badge" class="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">0명 완료</span></button>
+            <button onclick="generateA4Report()" class="w-full bg-indigo-700 text-white py-4 rounded-xl font-black text-base shadow-lg active:scale-95 text-center">🚀 V7 예배 보고서(PDF) 생성</button>
         </div>
     </div>
 
@@ -108,10 +106,10 @@
         </div>
     </div>
 
-    <div id="report-view" class="bg-gray-200 min-h-screen py-8 w-full overflow-y-auto overflow-x-hidden">
-        <div class="text-center mb-6 no-print flex gap-3 justify-center w-full px-4">
-            <button onclick="closeReportView()" class="flex-1 max-w-[200px] bg-slate-700 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg">🔙 뒤로가기</button>
-            <button onclick="window.print()" class="flex-1 max-w-[200px] bg-blue-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg">🖨️ 인쇄/PDF 저장</button>
+    <div id="report-view" class="bg-gray-200 min-h-screen w-full overflow-y-auto overflow-x-hidden">
+        <div class="text-center py-6 no-print flex gap-3 justify-center w-full px-4 bg-slate-800 shadow-md">
+            <button onclick="closeReportView()" class="flex-1 max-w-[200px] bg-slate-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg border border-slate-500">🔙 뒤로가기</button>
+            <button onclick="window.print()" class="flex-1 max-w-[200px] bg-blue-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg">🖨️ PDF 저장</button>
         </div>
         <div id="report-container">
             <div class="a4-page relative" id="a4-content"></div>
@@ -119,9 +117,7 @@
     </div>
 
     <script>
-        // 🚨 [필독] 부서에 맞게 아래 이름만 바꾸세요!
         const DEPT_NAME = "청년부"; 
-
         const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.database();
@@ -131,7 +127,6 @@
         let currentReportDetails = {}; 
 
         function initApp() {
-            document.getElementById('app-title').innerText = `⛪ ${DEPT_NAME} 출석부 (실시간)`;
             document.getElementById('today-date').value = new Date().toISOString().split('T')[0];
             
             db.ref('members').on('value', (snap) => {
@@ -146,11 +141,9 @@
                 checkServerStatus();
                 startAttendanceSync(); 
             });
-
             document.getElementById('today-date').addEventListener('change', startAttendanceSync);
         }
 
-        // 🚨 실시간 동기화 핵심 엔진 
         function startAttendanceSync() {
             const dateStr = document.getElementById('today-date').value;
             const path = `attendance/${dateStr}/${DEPT_NAME}`;
@@ -183,7 +176,6 @@
             });
         }
 
-        // 🚨 버튼 누를 때 로직 (낱개로 서버 전송)
         window.toggleAttendance = function(cleanName) { 
             const dateStr = document.getElementById('today-date').value;
             const isPresent = presentSet.has(cleanName);
@@ -191,256 +183,39 @@
             document.getElementById('search-input').value = ""; 
         }
 
+        // 🚨 매직 파서: "청년부_1조(민결,김하늘)" -> 조이름: "1조", 리더배열: ["민결", "김하늘"]
         function parseGroupInfo(groupKey) {
             const prefix = DEPT_NAME + "_"; if (!groupKey.startsWith(prefix)) return null;
-            const rest = groupKey.substring(prefix.length); 
-            return { className: rest }; 
+            let rest = groupKey.substring(prefix.length); 
+            let className = rest; let leaders = [];
+            const match = rest.match(/(.+?)(?:\((.+?)\))?$/);
+            if(match) {
+                className = match[1].trim();
+                if(match[2]) leaders = match[2].split(/[,/]/).map(s => s.trim());
+            }
+            return { className, leaders }; 
         }
 
-        // 🚨 + 버튼으로 조원 이동 및 등록
         window.moveOrAddFriend = function(targetGroupKey, currentGroupNum) {
-            const name = prompt(`[${currentGroupNum}조] 영구 등록할 성도 이름:`);
+            const name = prompt(`영구 등록할 성도 이름:`);
             if(!name || name.trim() === "") return; 
             const cleanName = name.trim(); 
 
-            let updates = {};
-            let isMoving = false;
-            let currentGroupLabel = '';
+            let updates = {}; let isMoving = false; let currentGroupLabel = '';
 
             for(let key in allMembersObj) {
                 let currentArray = allMembersObj[key] || [];
                 const existingIndex = currentArray.findIndex(n => n === cleanName);
-                
                 if(existingIndex !== -1) {
                     isMoving = true;
-                    if(key === targetGroupKey) { alert(`이미 [${currentGroupNum}조]에 등록된 성도입니다.`); return; }
-                    
-                    // 원자적 업데이트: A조에서 삭제, B조에 추가
+                    if(key === targetGroupKey) { alert(`이미 이 조에 등록된 성도입니다.`); return; }
                     updates[`members/${key}`] = currentArray.filter(n => n !== cleanName);
                     let targetArray = allMembersObj[targetGroupKey] ? [...allMembersObj[targetGroupKey]] : [];
-                    targetArray.push(cleanName);
-                    targetArray.sort((a, b) => a.localeCompare(b));
+                    targetArray.push(cleanName); targetArray.sort((a, b) => a.localeCompare(b));
                     updates[`members/${targetGroupKey}`] = targetArray;
-                    
-                    currentGroupLabel = `${currentGroupNum}조`
+                    currentGroupLabel = parseGroupInfo(key).className;
                     break; 
                 }
             }
 
-            if(isMoving) {
-                if(confirm(`[${cleanName}] 성도는 다른 조에 등록되어 있습니다.\n[${currentGroupLabel}]로 이동시키겠습니까?`)) {
-                    db.ref().update(updates).then(() => {
-                        alert(`🎉 [${cleanName}] 성도 이동 완료! (+자동 출석)`);
-                        window.toggleAttendance(cleanName); 
-                    });
-                }
-            } else {
-                let targetArray = allMembersObj[targetGroupKey] ? [...allMembersObj[targetGroupKey]] : [];
-                targetArray.push(cleanName);
-                targetArray.sort((a,b)=>a.localeCompare(b));
-                db.ref(`members/${targetGroupKey}`).set(targetArray).then(() => {
-                    alert(`🎉 [${cleanName}] 성도 신규 등록 완료! (+자동 출석)`);
-                    window.toggleAttendance(cleanName); 
-                });
-            }
-        };
-
-        function renderLists() {
-            const container = document.getElementById('members-container'); container.innerHTML = ''; const keyword = document.getElementById('search-input').value.trim();
-            const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
-
-            groupKeys.forEach((groupKey, index) => {
-                const info = parseGroupInfo(groupKey); if (!info) return;
-                let membersArr = allMembersObj[groupKey] || []; 
-                let displayMembers = [...membersArr];
-                
-                let hasKeyword = keyword !== "";
-                let groupMatch = hasKeyword && info.className.includes(keyword);
-                let filteredMembers = membersArr.filter(name => name.includes(keyword));
-                
-                if (hasKeyword && !groupMatch && filteredMembers.length === 0) return;
-                
-                const groupNum = index + 1; // 1조, 2조
-                const section = document.createElement('div'); section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
-                
-                section.innerHTML = `<div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2"><h3 class="text-sm font-black text-gray-800 flex items-center gap-1.5 section-title"><span class="w-2 h-4 bg-indigo-500 rounded-full"></span>${groupNum}조 <span class="text-xs text-indigo-400 font-normal">(${info.className})</span><span class="text-xs text-indigo-400 font-bold ml-1">${membersArr.length}명</span></h3></div>`;
-                const grid = document.createElement('div'); grid.className = "grid grid-cols-6 gap-1.5"; 
-                
-                (hasKeyword ? filteredMembers : displayMembers).forEach(name => {
-                    const isPresent = presentSet.has(name); const btn = document.createElement('button');
-                    let isMatch = hasKeyword && name.includes(keyword);
-                    btn.className = `member-btn w-full text-center tracking-tight leading-tight ${isPresent ? 'status-present' : 'status-absent'} ${isMatch ? 'highlight-search' : ''}`;
-                    btn.innerHTML = name; btn.onclick = () => toggleAttendance(name); grid.appendChild(btn);
-                });
-                if(!keyword) { const addBtn = document.createElement('button'); addBtn.className = "member-btn w-full add-btn flex items-center justify-center active:scale-90"; addBtn.innerHTML = "+"; addBtn.onclick = () => moveOrAddFriend(groupKey, groupNum); grid.appendChild(addBtn); }
-                section.appendChild(grid); container.appendChild(section);
-            });
-            
-            if(visitorsNew.length > 0 || visitorsRecurring.length > 0) {
-                const visSection = document.createElement('div'); visSection.className = "bg-orange-50 p-2 rounded-xl shadow-sm border border-orange-200 mb-2 mt-4";
-                visSection.innerHTML = `<h3 class="text-sm font-black text-orange-800 mb-2 border-b border-orange-200 pb-2 section-title">👋 당일 방문자</h3>`;
-                const visGrid = document.createElement('div'); visGrid.className = "grid grid-cols-4 gap-1.5";
-                visitorsNew.forEach((v, idx) => { const btn = document.createElement('button'); btn.className = "member-btn w-full text-center status-visitor text-[12px] flex flex-col items-center py-1"; btn.innerHTML = `<span>${v.name}</span><span class="text-[9px] opacity-80 mt-0.5">${v.reason}</span>`; btn.onclick = () => { if(confirm(`${v.name} 삭제?`)) { visitorsNew.splice(idx, 1); db.ref(`attendance/${document.getElementById('today-date').value}/${DEPT_NAME}/visitorsNew`).set(visitorsNew); } }; visGrid.appendChild(btn); });
-                visitorsRecurring.forEach((v, idx) => { const btn = document.createElement('button'); btn.className = "member-btn w-full text-center bg-slate-400 text-white text-[12px]"; btn.innerHTML = `${v.name} (계속)`; btn.onclick = () => { if(confirm(`${v.name} 삭제?`)) { visitorsRecurring.splice(idx, 1); db.ref(`attendance/${document.getElementById('today-date').value}/${DEPT_NAME}/visitorsRecurring`).set(visitorsRecurring); } }; visGrid.appendChild(btn); });
-                visSection.appendChild(visGrid); container.appendChild(visSection);
-            }
-            document.getElementById('count-display').innerText = presentSet.size + visitorsNew.length;
-        }
-
-        function filterMembers() { renderLists(); }
-
-        window.addVisitor = function(isNew) {
-            const name = prompt(isNew ? "🆕 첫 방문자 이름:" : "🔄 계속 방문자 이름 (보고제외):"); if(!name || name.trim() === "") return;
-            const dateStr = document.getElementById('today-date').value;
-            if(isNew) { const reason = prompt(`[${name.trim()}] 방문 사유`) || "새친구"; visitorsNew.push({ name: name.trim(), reason: reason }); db.ref(`attendance/${dateStr}/${DEPT_NAME}/visitorsNew`).set(visitorsNew); }
-            else { visitorsRecurring.push({ name: name.trim() }); db.ref(`attendance/${dateStr}/${DEPT_NAME}/visitorsRecurring`).set(visitorsRecurring); }
-        };
-
-        // 🚨 최종 마감 (사유 텍스트만 저장)
-        window.submitReportDetails = function() {
-            const targetDate = document.getElementById('today-date').value;
-            currentReportDetails = {
-                preacher: document.getElementById('rep-preacher').value,
-                scripture: document.getElementById('rep-scripture').value,
-                title: document.getElementById('rep-title').value,
-                vicePreacher: document.getElementById('rep-vice-preacher').value,
-                note: document.getElementById('rep-note').value
-            };
-            db.ref(`attendance/${targetDate}/report_details_${DEPT_NAME}`).set(currentReportDetails);
-            db.ref(`attendance/${targetDate}/absentees_${DEPT_NAME}`).set(absenteeReasons);
-            
-            let reportData1 = { totalPresent: presentSet.size + visitorsNew.length, groups: {}, visitorsNew };
-            Object.keys(allMembersObj).forEach(gKey => { 
-                let p = [], a = []; 
-                (allMembersObj[gKey] || []).forEach(name => {
-                    if(presentSet.has(name)) p.push(name); else a.push(name);
-                }); 
-                reportData1.groups[gKey] = { present: p.sort(), absent: a.sort() }; 
-            });
-            db.ref(`attendance/${targetDate}/${DEPT_NAME}/groups_snapshot`).set(reportData1.groups);
-            db.ref(`attendance/${targetDate}/${DEPT_NAME}/total_snapshot`).set(reportData1.totalPresent);
-
-            alert(`💾 ${DEPT_NAME} 최종 보고서 데이터 저장 완료!`);
-        }
-
-        window.openReportCenter = function() { document.getElementById('report-modal').style.display = 'flex'; }
-        window.closeReportCenter = function() { document.getElementById('report-modal').style.display = 'none'; }
-        window.closeReportView = function() { document.getElementById('report-view').style.display = 'none'; document.getElementById('main-app').style.display = 'block'; }
-
-        // 🚨 A4 보고서 생성
-        window.generateA4Report = async function() {
-            const dateVal = document.getElementById('today-date').value;
-            const targetDateStr = dateVal.replace(/-/g, '. ');
-            const weekNum = Math.ceil(new Date(dateVal).getDate() / 7);
-
-            const preacher = currentReportDetails.preacher || "미입력";
-            const scripture = currentReportDetails.scripture || "미입력";
-            const title = currentReportDetails.title || "미입력";
-            const pray = currentReportDetails.vicePreacher || "미입력";
-            const note = currentReportDetails.note || "특이사항 없음";
-
-            let groupRowsHtml = '';
-            let totalPresent = presentSet.size + visitorsNew.length;
-            const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
-            
-            groupKeys.forEach((gKey, index) => {
-                const info = parseGroupInfo(gKey);
-                const pList = []; const aList = [];
-                let pCount = 0;
-
-                (allMembersObj[gKey]||[]).forEach(name => {
-                    if(presentSet.has(name)) { pList.push(name); pCount++; } 
-                    else { aList.push(name); }
-                });
-
-                if(pList.length > 0 || aList.length > 0) {
-                    groupRowsHtml += `
-                        <tr class="text-center">
-                            <td class="font-black text-slate-800">${info.className}</td>
-                            <td class="text-slate-500">(미입력)</td>
-                            <td class="text-left text-blue-900 font-bold leading-tight">${pList.join(' ') || '-'}</td>
-                            <td class="font-black text-blue-800">${pCount}</td>
-                            <td class="text-left text-red-600 font-medium leading-tight">${aList.join(' ') || '-'}</td>
-                        </tr>`;
-                }
-            });
-
-            const visHtml = visitorsNew.map(v=>`${v.name}(${v.reason})`).join(', ') || "-";
-            const absKeys = Object.keys(absenteeReasons).sort();
-            let absReasonHtml = absKeys.map(name => `[${name}] ${absenteeReasons[name]}`).join(' / ') || "작성된 결석 사유가 없습니다.";
-
-            const html = `
-                <div class="text-center mb-6 no-print">
-                    <h1 class="text-3xl font-black text-black">⛪ ${DEPT_NAME} 예배 일지</h1>
-                    <p class="text-xl font-black text-slate-700 mt-2">${targetDateStr} (제${weekNum}주)</p>
-                </div>
-
-                <table class="w-full text-[12px] border-2 border-black dense-table mb-4 text-center">
-                    <tbody class="font-bold">
-                        <tr><th class="w-[12%] bg-slate-50">설교자</th><td class="w-[20%]">${preacher}</td><th class="w-[12%] bg-slate-50">말씀 본문</th><td class="w-[20%]">${scripture}</td><th class="w-[12%] bg-slate-50">설교 제목</th><td>${title}</td></tr>
-                        <tr><th class="bg-slate-50">대표 기도</th><td>${pray}</td><th class="bg-slate-50">특이사항</th><td colspan="3" class="text-left text-slate-700">${note}</td></tr>
-                    </tbody>
-                </table>
-
-                <table class="w-full text-[11px] border-2 border-black dense-table mb-2 text-center leading-snug">
-                    <thead class="bg-slate-100 font-black">
-                        <tr><th class="w-[10%]">리더</th><th class="w-[10%]">부리더</th><th class="w-[35%]">출석자 명단 ✅</th><th class="w-[8%]">인원</th><th>결석자 명단 ❌</th></tr>
-                    </thead>
-                    <tbody class="font-bold text-slate-800">${groupRowsHtml}</tbody>
-                    <tfoot class="font-black bg-blue-50 text-blue-950 text-[12px]">
-                        <tr><td colspan="3" class="text-right">총 인원 집계</td><td colspan="2" class="text-center text-blue-800">${totalPresent} 명</td></tr>
-                    </tfoot>
-                </table>
-
-                <div class="grid grid-cols-2 gap-4 text-[12px]">
-                    <div class="border-2 border-black p-3 rounded-md bg-orange-50">
-                        <p class="font-black text-orange-900 mb-2 border-b-2 border-orange-300 pb-1">🌱 당일 방문자 및 새친구</p>
-                        <p class="font-bold text-slate-800 leading-relaxed">${visHtml}</p>
-                    </div>
-                    <div class="border-2 border-black p-3 rounded-md bg-red-50">
-                        <p class="font-black text-red-900 mb-2 border-b-2 border-red-300 pb-1">❌ 결석 사유 요약</p>
-                        <p class="font-bold text-red-800 leading-relaxed">${absReasonHtml}</p>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('a4-content').innerHTML = html;
-            closeReportCenter(); document.getElementById('main-app').style.display = 'none'; document.getElementById('report-view').style.display = 'block';
-            setTimeout(scaleReport, 50);
-        }
-
-        function fillReportInputs() {
-            document.getElementById('rep-preacher').value = currentReportDetails.preacher || "";
-            document.getElementById('rep-scripture').value = currentReportDetails.scripture || "";
-            document.getElementById('rep-title').value = currentReportDetails.title || "";
-            document.getElementById('rep-vice-preacher').value = currentReportDetails.vicePreacher || "";
-            document.getElementById('rep-note').value = currentReportDetails.note || "";
-        }
-
-        function scaleReport() {
-            const container = document.getElementById('report-container');
-            const page = document.getElementById('a4-content');
-            const w = container.clientWidth;
-            if(w < 820) { const scale = w / 820; page.style.transform = `scale(${scale})`; page.style.transformOrigin = 'top center'; container.style.height = `${1123 * scale + 40}px`; }
-            else { page.style.transform = 'none'; container.style.height = 'auto'; }
-        }
-
-        window.openAbsenteeModal = function() {
-            const listContainer = document.getElementById('absentee-list-container'); listContainer.innerHTML = '';
-            let absentees = []; Object.keys(allMembersObj).forEach(gKey => { (allMembersObj[gKey]||[]).forEach(name => { if(!presentSet.has(name) && !absentees.includes(name)) absentees.push(name); }); });
-            absentees.sort().forEach(name => {
-                const hasReason = !!absenteeReasons[name]; const btn = document.createElement('button'); btn.className = `w-full text-left p-3 rounded-lg border-2 mb-2 font-bold text-sm transition-all ${hasReason ? 'border-orange-500 bg-orange-50 text-orange-900' : 'border-slate-200 bg-white text-slate-500'}`;
-                btn.innerHTML = `<div class="flex justify-between"><span>${name}</span><span class="text-xs px-2 py-0.5 rounded-full ${hasReason?'bg-orange-500 text-white':'bg-slate-200'}">${hasReason?'입력됨':'사유 입력'}</span></div>${hasReason ? `<div class="mt-2 text-orange-700 bg-white p-2 border border-orange-200">👉 ${absenteeReasons[name]}</div>` : ''}`;
-                btn.onclick = () => { const reason = prompt(`[${name}] 결석 사유 입력:`, absenteeReasons[name] || ""); if(reason !== null) { if(reason.trim()==="") delete absenteeReasons[name]; else absenteeReasons[name] = reason.trim(); openAbsenteeModal(); updateAbsenteeBadge(); } };
-                listContainer.appendChild(btn);
-            });
-            document.getElementById('absentee-modal').style.display = 'flex';
-        }
-        window.closeAbsenteeModal = function() { document.getElementById('absentee-modal').style.display = 'none'; }
-        function updateAbsenteeBadge() { document.getElementById('absentee-count-badge').innerText = `${Object.keys(absenteeReasons).length}명 작성됨`; }
-        function checkServerStatus() { document.getElementById('db-status').innerText = `🟢 서버 연동 완료! (${allMembersObj[Object.keys(allMembersObj)[0]]?.length || 0}명 로드됨)`; document.getElementById('db-status').className = "text-[11px] font-bold text-green-600 mt-2 text-center"; }
-        window.addEventListener('resize', () => { if(document.getElementById('report-view').style.display === 'block') scaleReport(); });
-        window.onload = initApp;
-    </script>
-</body>
-</html>
+            if(
