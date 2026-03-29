@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>⛪ 청년부 출석 마스터 V7</title>
+    <title>⛪ 청년부 출석 마스터 V7 (찐최종)</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -126,6 +126,16 @@
         let visitorsNew = []; let visitorsRecurring = []; let absenteeReasons = {}; 
         let currentReportDetails = {}; 
 
+        // 🚨 스마트 정렬 함수 (리더 -> 부리더 -> 일반 조원 순)
+        function sortMembers(arr) {
+            return arr.sort((a, b) => {
+                const rankA = a.includes('(리더)') ? 1 : a.includes('(부리더)') ? 2 : 3;
+                const rankB = b.includes('(리더)') ? 1 : b.includes('(부리더)') ? 2 : 3;
+                if (rankA !== rankB) return rankA - rankB;
+                return a.localeCompare(b);
+            });
+        }
+
         function initApp() {
             document.getElementById('today-date').value = new Date().toISOString().split('T')[0];
             
@@ -134,7 +144,7 @@
                 for(let k in data) { 
                     if(k.startsWith(DEPT_NAME + "_")) { 
                         let membersArray = data[k] ? (Array.isArray(data[k]) ? data[k] : Object.values(data[k])) : [];
-                        processed[k] = membersArray.sort((a, b) => a.localeCompare(b));
+                        processed[k] = sortMembers(membersArray); // 🚨 정렬 적용
                     } 
                 }
                 allMembersObj = processed;
@@ -176,27 +186,15 @@
             });
         }
 
-        window.toggleAttendance = function(cleanName) { 
+        window.toggleAttendance = function(fullName) { 
             const dateStr = document.getElementById('today-date').value;
-            const isPresent = presentSet.has(cleanName);
-            db.ref(`attendance/${dateStr}/${DEPT_NAME}/present_list/${cleanName}`).set(isPresent ? null : true);
+            const isPresent = presentSet.has(fullName);
+            db.ref(`attendance/${dateStr}/${DEPT_NAME}/present_list/${fullName}`).set(isPresent ? null : true);
             document.getElementById('search-input').value = ""; 
         }
 
-        function parseGroupInfo(groupKey) {
-            const prefix = DEPT_NAME + "_"; if (!groupKey.startsWith(prefix)) return null;
-            let rest = groupKey.substring(prefix.length); 
-            let className = rest; let leaders = [];
-            const match = rest.match(/(.+?)(?:\((.+?)\))?$/);
-            if(match) {
-                className = match[1].trim();
-                if(match[2]) leaders = match[2].split(/[,/]/).map(s => s.trim());
-            }
-            return { className, leaders }; 
-        }
-
         window.moveOrAddFriend = function(targetGroupKey, currentGroupNum) {
-            const name = prompt(`영구 등록할 성도 이름:`);
+            const name = prompt(`영구 등록할 성도 이름 (예: 김철수, 강지명(리더)):`);
             if(!name || name.trim() === "") return; 
             const cleanName = name.trim(); 
 
@@ -210,9 +208,12 @@
                     if(key === targetGroupKey) { alert(`이미 이 조에 등록된 성도입니다.`); return; }
                     updates[`members/${key}`] = currentArray.filter(n => n !== cleanName);
                     let targetArray = allMembersObj[targetGroupKey] ? [...allMembersObj[targetGroupKey]] : [];
-                    targetArray.push(cleanName); targetArray.sort((a, b) => a.localeCompare(b));
-                    updates[`members/${targetGroupKey}`] = targetArray;
-                    currentGroupLabel = parseGroupInfo(key).className;
+                    targetArray.push(cleanName); 
+                    updates[`members/${targetGroupKey}`] = sortMembers(targetArray);
+                    
+                    // 조 이름 매칭 로직 (청년부_강지명조 -> 1조)
+                    const gKeys = Object.keys(allMembersObj).sort((a,b)=>a.localeCompare(b));
+                    currentGroupLabel = (gKeys.indexOf(key) + 1) + "조";
                     break; 
                 }
             }
@@ -223,8 +224,8 @@
                 }
             } else {
                 let targetArray = allMembersObj[targetGroupKey] ? [...allMembersObj[targetGroupKey]] : [];
-                targetArray.push(cleanName); targetArray.sort((a,b)=>a.localeCompare(b));
-                db.ref(`members/${targetGroupKey}`).set(targetArray).then(() => { alert(`🎉 신규 등록 완료!`); window.toggleAttendance(cleanName); });
+                targetArray.push(cleanName); 
+                db.ref(`members/${targetGroupKey}`).set(sortMembers(targetArray)).then(() => { alert(`🎉 신규 등록 완료!`); window.toggleAttendance(cleanName); });
             }
         };
 
@@ -233,23 +234,32 @@
             const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
 
             groupKeys.forEach((groupKey, index) => {
-                const info = parseGroupInfo(groupKey); if (!info) return;
                 let membersArr = allMembersObj[groupKey] || []; let displayMembers = [...membersArr];
-                let hasKeyword = keyword !== ""; let groupMatch = hasKeyword && info.className.includes(keyword);
+                let hasKeyword = keyword !== "";
                 let filteredMembers = membersArr.filter(name => name.includes(keyword));
-                if (hasKeyword && !groupMatch && filteredMembers.length === 0) return;
+                
+                const groupNumStr = (index + 1) + "조"; // 🚨 무조건 1조, 2조 변환
+                
+                if (hasKeyword && !groupNumStr.includes(keyword) && filteredMembers.length === 0) return;
                 
                 const section = document.createElement('div'); section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
-                let leaderBadge = info.leaders.length > 0 ? `<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded ml-1 border border-slate-200">${info.leaders.join(', ')}</span>` : '';
                 
-                section.innerHTML = `<div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2"><h3 class="text-sm font-black text-gray-800 flex items-center gap-1.5 section-title"><span class="w-2 h-4 bg-indigo-500 rounded-full"></span>${info.className} ${leaderBadge} <span class="text-xs text-indigo-400 font-bold ml-auto">${membersArr.length}명</span></h3></div>`;
+                section.innerHTML = `<div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2"><h3 class="text-sm font-black text-gray-800 flex items-center gap-1.5 section-title"><span class="w-2 h-4 bg-indigo-500 rounded-full"></span>${groupNumStr} <span class="text-xs text-indigo-400 font-bold ml-auto">${membersArr.length}명</span></h3></div>`;
                 const grid = document.createElement('div'); grid.className = "grid grid-cols-6 gap-1.5"; 
                 
                 (hasKeyword ? filteredMembers : displayMembers).forEach(name => {
                     const isPresent = presentSet.has(name); const btn = document.createElement('button');
                     let isMatch = hasKeyword && name.includes(keyword);
+                    // 앱에서는 (리더) 꼬리표 그대로 보여줌
                     btn.className = `member-btn w-full text-center tracking-tight leading-tight ${isPresent ? 'status-present' : 'status-absent'} ${isMatch ? 'highlight-search' : ''}`;
-                    btn.innerHTML = name; btn.onclick = () => toggleAttendance(name); grid.appendChild(btn);
+                    
+                    // 글씨가 길면 작게 처리
+                    let displayName = name;
+                    if(name.length > 5) displayName = `<span class="text-[11px] leading-none">${name}</span>`;
+                    
+                    btn.innerHTML = displayName; 
+                    btn.onclick = () => toggleAttendance(name); 
+                    grid.appendChild(btn);
                 });
                 if(!keyword) { const addBtn = document.createElement('button'); addBtn.className = "member-btn w-full add-btn flex items-center justify-center active:scale-90"; addBtn.innerHTML = "+"; addBtn.onclick = () => moveOrAddFriend(groupKey); grid.appendChild(addBtn); }
                 section.appendChild(grid); container.appendChild(section);
@@ -290,7 +300,15 @@
         window.closeReportCenter = function() { document.getElementById('report-modal').style.display = 'none'; }
         window.closeReportView = function() { document.getElementById('report-view').style.display = 'none'; document.getElementById('main-app').style.display = 'block'; }
 
-        // 🚨 V7 찐최종 A4 보고서 생성 (그래프 무한증식 방지 족쇄 추가!)
+        // 이름 파서: 꼬리표 떼어내고 직분 식별
+        function extractRoleAndName(fullName) {
+            let name = fullName; let role = 'member';
+            if (fullName.includes('(리더)')) { name = fullName.replace('(리더)', '').trim(); role = 'leader'; } 
+            else if (fullName.includes('(부리더)')) { name = fullName.replace('(부리더)', '').trim(); role = 'subleader'; }
+            return { name, role, original: fullName };
+        }
+
+        // 🚨 V7 찐최종 A4 보고서 생성 (VIP 6열 구조)
         window.generateA4Report = async function() {
             const dateVal = document.getElementById('today-date').value;
             const targetDateStr = dateVal.replace(/-/g, '. ');
@@ -306,31 +324,39 @@
             const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
             
             groupKeys.forEach((gKey, index) => {
-                const info = parseGroupInfo(gKey);
-                const pList = []; const aList = [];
+                const groupNumStr = (index + 1) + "조";
+                
+                let pList = []; let aList = [];
                 let pCount = 0;
+                let leaderHtml = '-'; let subleaderHtml = '-';
 
-                (allMembersObj[gKey]||[]).forEach(name => {
-                    if(presentSet.has(name)) { pList.push(name); pCount++; } 
-                    else { aList.push(name); }
+                (allMembersObj[gKey]||[]).forEach(fullName => {
+                    const isPresent = presentSet.has(fullName);
+                    const parsed = extractRoleAndName(fullName);
+                    
+                    if(isPresent) pCount++;
+
+                    // VIP 분류 마법
+                    if(parsed.role === 'leader') {
+                        leaderHtml = isPresent ? `<span class="font-black text-blue-900">${parsed.name}</span>` : `<span class="font-medium text-slate-400">(${parsed.name})</span>`;
+                    } else if(parsed.role === 'subleader') {
+                        subleaderHtml = isPresent ? `<span class="font-bold text-slate-800">${parsed.name}</span>` : `<span class="font-medium text-slate-400">(${parsed.name})</span>`;
+                    } else {
+                        // 일반 조원
+                        if(isPresent) pList.push(parsed.name);
+                        else aList.push(parsed.name);
+                    }
                 });
 
-                let leaderHtml = '-';
-                if(info.leaders.length > 0) {
-                    leaderHtml = info.leaders.map(l => {
-                        if(presentSet.has(l)) return `<span class="font-bold text-slate-800">${l}</span>`;
-                        else return `<span class="font-medium text-slate-400">(${l})</span>`;
-                    }).join(', ');
-                }
-
-                if(pList.length > 0 || aList.length > 0) {
+                if(allMembersObj[gKey].length > 0) {
                     groupRowsHtml += `
                         <tr>
-                            <td class="font-black text-slate-800 bg-slate-50">${info.className}</td>
+                            <td class="font-black text-slate-800 bg-slate-50">${groupNumStr}</td>
+                            <td class="text-sm">${leaderHtml}</td>
+                            <td class="text-sm">${subleaderHtml}</td>
                             <td class="font-black text-blue-700">${pCount}명</td>
                             <td class="text-left text-slate-800 font-bold leading-relaxed">${pList.join(', ') || '-'}</td>
                             <td class="text-left text-red-500 font-medium leading-relaxed">${aList.join(', ') || '-'}</td>
-                            <td class="text-sm">${leaderHtml}</td>
                         </tr>`;
                 }
             });
@@ -388,7 +414,7 @@
                 <h2 class="text-[15px] font-black text-blue-950 mb-2 border-b-2 border-blue-900 pb-1">II. 상세 출석 명단</h2>
                 <table class="w-full text-[12px] border-t-2 border-blue-900 dense-table">
                     <thead>
-                        <tr><th class="w-[12%]">반(구분)</th><th class="w-[10%]">출석인원</th><th class="w-[34%]">출석자 명단 ✅</th><th class="w-[30%]">결석자 명단 ❌</th><th class="w-[14%]">리더/부리더 👑</th></tr>
+                        <tr><th class="w-[8%]">조(구분)</th><th class="w-[12%]">리더 👑</th><th class="w-[12%]">부리더 👑</th><th class="w-[10%]">출석인원</th><th class="w-[29%]">조원 출석 ✅</th><th class="w-[29%]">조원 결석 ❌</th></tr>
                     </thead>
                     <tbody>${groupRowsHtml}</tbody>
                 </table>
