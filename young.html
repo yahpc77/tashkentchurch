@@ -218,4 +218,231 @@
                 }
             }
 
-            if(
+            if(isMoving) {
+                if(confirm(`[${cleanName}] 성도는 [${currentGroupLabel}]에 있습니다.\n이동시키겠습니까?`)) {
+                    db.ref().update(updates).then(() => { alert(`🎉 이동 완료!`); window.toggleAttendance(cleanName); });
+                }
+            } else {
+                let targetArray = allMembersObj[targetGroupKey] ? [...allMembersObj[targetGroupKey]] : [];
+                targetArray.push(cleanName); targetArray.sort((a,b)=>a.localeCompare(b));
+                db.ref(`members/${targetGroupKey}`).set(targetArray).then(() => { alert(`🎉 신규 등록 완료!`); window.toggleAttendance(cleanName); });
+            }
+        };
+
+        function renderLists() {
+            const container = document.getElementById('members-container'); container.innerHTML = ''; const keyword = document.getElementById('search-input').value.trim();
+            const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
+
+            groupKeys.forEach((groupKey, index) => {
+                const info = parseGroupInfo(groupKey); if (!info) return;
+                let membersArr = allMembersObj[groupKey] || []; let displayMembers = [...membersArr];
+                let hasKeyword = keyword !== ""; let groupMatch = hasKeyword && info.className.includes(keyword);
+                let filteredMembers = membersArr.filter(name => name.includes(keyword));
+                if (hasKeyword && !groupMatch && filteredMembers.length === 0) return;
+                
+                const section = document.createElement('div'); section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
+                let leaderBadge = info.leaders.length > 0 ? `<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded ml-1 border border-slate-200">${info.leaders.join(', ')}</span>` : '';
+                
+                section.innerHTML = `<div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2"><h3 class="text-sm font-black text-gray-800 flex items-center gap-1.5 section-title"><span class="w-2 h-4 bg-indigo-500 rounded-full"></span>${info.className} ${leaderBadge} <span class="text-xs text-indigo-400 font-bold ml-auto">${membersArr.length}명</span></h3></div>`;
+                const grid = document.createElement('div'); grid.className = "grid grid-cols-6 gap-1.5"; 
+                
+                (hasKeyword ? filteredMembers : displayMembers).forEach(name => {
+                    const isPresent = presentSet.has(name); const btn = document.createElement('button');
+                    let isMatch = hasKeyword && name.includes(keyword);
+                    btn.className = `member-btn w-full text-center tracking-tight leading-tight ${isPresent ? 'status-present' : 'status-absent'} ${isMatch ? 'highlight-search' : ''}`;
+                    btn.innerHTML = name; btn.onclick = () => toggleAttendance(name); grid.appendChild(btn);
+                });
+                if(!keyword) { const addBtn = document.createElement('button'); addBtn.className = "member-btn w-full add-btn flex items-center justify-center active:scale-90"; addBtn.innerHTML = "+"; addBtn.onclick = () => moveOrAddFriend(groupKey); grid.appendChild(addBtn); }
+                section.appendChild(grid); container.appendChild(section);
+            });
+            
+            if(visitorsNew.length > 0 || visitorsRecurring.length > 0) {
+                const visSection = document.createElement('div'); visSection.className = "bg-orange-50 p-2 rounded-xl shadow-sm border border-orange-200 mb-2 mt-4";
+                visSection.innerHTML = `<h3 class="text-sm font-black text-orange-800 mb-2 border-b border-orange-200 pb-2 section-title">👋 당일 방문자</h3>`;
+                const visGrid = document.createElement('div'); visGrid.className = "grid grid-cols-4 gap-1.5";
+                visitorsNew.forEach((v, idx) => { const btn = document.createElement('button'); btn.className = "member-btn w-full text-center status-visitor text-[12px] flex flex-col items-center py-1"; btn.innerHTML = `<span>${v.name}</span><span class="text-[9px] opacity-80 mt-0.5">${v.reason}</span>`; btn.onclick = () => { if(confirm(`${v.name} 삭제?`)) { visitorsNew.splice(idx, 1); db.ref(`attendance/${document.getElementById('today-date').value}/${DEPT_NAME}/visitorsNew`).set(visitorsNew); } }; visGrid.appendChild(btn); });
+                visitorsRecurring.forEach((v, idx) => { const btn = document.createElement('button'); btn.className = "member-btn w-full text-center bg-slate-400 text-white text-[12px]"; btn.innerHTML = `${v.name} (계속)`; btn.onclick = () => { if(confirm(`${v.name} 삭제?`)) { visitorsRecurring.splice(idx, 1); db.ref(`attendance/${document.getElementById('today-date').value}/${DEPT_NAME}/visitorsRecurring`).set(visitorsRecurring); } }; visGrid.appendChild(btn); });
+                visSection.appendChild(visGrid); container.appendChild(visSection);
+            }
+            document.getElementById('count-display').innerText = presentSet.size + visitorsNew.length;
+        }
+
+        function filterMembers() { renderLists(); }
+
+        window.addVisitor = function(isNew) {
+            const name = prompt(isNew ? "🆕 첫 방문자 이름:" : "🔄 계속 방문자 이름 (보고제외):"); if(!name || name.trim() === "") return;
+            const dateStr = document.getElementById('today-date').value;
+            if(isNew) { const reason = prompt(`[${name.trim()}] 방문 사유`) || "새친구"; visitorsNew.push({ name: name.trim(), reason: reason }); db.ref(`attendance/${dateStr}/${DEPT_NAME}/visitorsNew`).set(visitorsNew); }
+            else { visitorsRecurring.push({ name: name.trim() }); db.ref(`attendance/${dateStr}/${DEPT_NAME}/visitorsRecurring`).set(visitorsRecurring); }
+        };
+
+        window.submitReportDetails = function() {
+            const targetDate = document.getElementById('today-date').value;
+            currentReportDetails = {
+                preacher: document.getElementById('rep-preacher').value, scripture: document.getElementById('rep-scripture').value,
+                title: document.getElementById('rep-title').value, vicePreacher: document.getElementById('rep-vice-preacher').value
+            };
+            db.ref(`attendance/${targetDate}/report_details_${DEPT_NAME}`).set(currentReportDetails);
+            db.ref(`attendance/${targetDate}/absentees_${DEPT_NAME}`).set(absenteeReasons);
+            alert(`💾 최종 보고서 텍스트 데이터 저장 완료!`);
+        }
+
+        window.openReportCenter = function() { document.getElementById('report-modal').style.display = 'flex'; }
+        window.closeReportCenter = function() { document.getElementById('report-modal').style.display = 'none'; }
+        window.closeReportView = function() { document.getElementById('report-view').style.display = 'none'; document.getElementById('main-app').style.display = 'block'; }
+
+        // 🚨 V7 찐최종 A4 보고서 생성
+        window.generateA4Report = async function() {
+            const dateVal = document.getElementById('today-date').value;
+            const targetDateStr = dateVal.replace(/-/g, '. ');
+            const weekNum = Math.ceil(new Date(dateVal).getDate() / 7);
+
+            const preacher = currentReportDetails.preacher || "정재호 목사";
+            const scripture = currentReportDetails.scripture || "마태복음 25장";
+            const title = currentReportDetails.title || "미입력";
+            const pray = currentReportDetails.vicePreacher || "미입력";
+
+            let groupRowsHtml = '';
+            let totalPresent = presentSet.size + visitorsNew.length;
+            const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
+            
+            groupKeys.forEach((gKey, index) => {
+                const info = parseGroupInfo(gKey);
+                const pList = []; const aList = [];
+                let pCount = 0;
+
+                (allMembersObj[gKey]||[]).forEach(name => {
+                    if(presentSet.has(name)) { pList.push(name); pCount++; } 
+                    else { aList.push(name); }
+                });
+
+                // 리더 괄호 매직 처리
+                let leaderHtml = '-';
+                if(info.leaders.length > 0) {
+                    leaderHtml = info.leaders.map(l => {
+                        if(presentSet.has(l)) return `<span class="font-bold text-slate-800">${l}</span>`;
+                        else return `<span class="font-medium text-slate-400">(${l})</span>`;
+                    }).join(', ');
+                }
+
+                if(pList.length > 0 || aList.length > 0) {
+                    groupRowsHtml += `
+                        <tr>
+                            <td class="font-black text-slate-800 bg-slate-50">${info.className}</td>
+                            <td class="font-black text-blue-700">${pCount}명</td>
+                            <td class="text-left text-slate-800 font-bold leading-relaxed">${pList.join(', ') || '-'}</td>
+                            <td class="text-left text-red-500 font-medium leading-relaxed">${aList.join(', ') || '-'}</td>
+                            <td class="text-sm">${leaderHtml}</td>
+                        </tr>`;
+                }
+            });
+
+            const visHtml = visitorsNew.map(v=>`${v.name}(${v.reason})`).join(', ') || "없음";
+            const absKeys = Object.keys(absenteeReasons).sort();
+            let absReasonHtml = absKeys.map(name => `[${name}] ${absenteeReasons[name]}`).join(' / ') || "<span class='text-red-400'>작성된 결석/특이 사유가 없습니다.</span>";
+
+            const html = `
+                <div class="border-b-4 border-blue-900 pb-3 mb-6 flex justify-between items-end">
+                    <div>
+                        <h1 class="text-3xl font-black text-blue-950 tracking-tighter">푸른 청년부 예배 및 출석 보고서</h1>
+                        <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Tashkent Korean Church</p>
+                    </div>
+                    <div class="text-xl font-black text-blue-950">${targetDateStr}</div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-6 mb-8">
+                    <div class="col-span-6 flex flex-col gap-4">
+                        <div>
+                            <h2 class="text-[15px] font-black text-blue-950 mb-2 border-b-2 border-blue-900 pb-1">I. 예배 정보</h2>
+                            <table class="w-full text-[13px] border border-slate-300">
+                                <tbody>
+                                    <tr class="border-b border-slate-300"><th class="w-1/4 bg-slate-100 py-2 text-slate-600 font-bold border-r border-slate-300">인도</th><td class="pl-3 font-bold text-slate-800">${preacher}</td></tr>
+                                    <tr class="border-b border-slate-300"><th class="bg-slate-100 py-2 text-slate-600 font-bold border-r border-slate-300">본문</th><td class="pl-3 font-bold text-slate-800">${scripture}</td></tr>
+                                    <tr><th class="bg-slate-100 py-2 text-slate-600 font-bold border-r border-slate-300">제목</th><td class="pl-3 font-bold text-slate-800">${title}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="border border-slate-200 rounded-lg p-3 bg-slate-50 flex-1">
+                            <p class="font-black text-green-700 text-[12px] mb-1">🌱 방문자 및 새친구</p>
+                            <p class="font-bold text-slate-800 text-[13px] mb-4">${visHtml}</p>
+                            <p class="font-black text-orange-600 text-[12px] mb-1">📝 특이사항 및 결석사유 요약</p>
+                            <div class="bg-red-50 text-red-800 p-2 rounded text-[12px] font-bold leading-relaxed">${absReasonHtml}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-span-6 flex flex-col">
+                        <div class="bg-[#243c7c] rounded-xl p-4 flex justify-between items-center shadow-md mb-4">
+                            <div>
+                                <p class="text-blue-200 text-[10px] font-bold uppercase tracking-wider">Total Attendance</p>
+                                <p class="text-lg font-black text-white mt-1">총 출석 인원</p>
+                            </div>
+                            <div class="text-right"><span class="text-4xl font-black text-white">${totalPresent}</span><span class="text-sm font-bold text-blue-200 ml-1">명</span></div>
+                        </div>
+                        <div class="flex-1 border border-slate-200 rounded-xl p-3 bg-white relative min-h-[140px]">
+                            <p class="text-[12px] font-black text-slate-700 mb-2 flex items-center gap-1">📊 최근 4주 출석 추이</p>
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 class="text-[15px] font-black text-blue-950 mb-2 border-b-2 border-blue-900 pb-1">II. 상세 출석 명단</h2>
+                <table class="w-full text-[12px] border-t-2 border-blue-900 dense-table">
+                    <thead>
+                        <tr><th class="w-[12%]">반(구분)</th><th class="w-[10%]">출석인원</th><th class="w-[34%]">출석자 명단 ✅</th><th class="w-[30%]">결석자 명단 ❌</th><th class="w-[14%]">리더/부리더 👑</th></tr>
+                    </thead>
+                    <tbody>${groupRowsHtml}</tbody>
+                </table>
+            `;
+
+            document.getElementById('a4-content').innerHTML = html;
+            closeReportCenter(); document.getElementById('main-app').style.display = 'none'; document.getElementById('report-view').style.display = 'block';
+            
+            setTimeout(() => {
+                scaleReport();
+                // 차트 그리기 (과거 3주: 38, 33, 36 + 현재)
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['3주전', '2주전', '지난주', '이번주'],
+                        datasets: [{
+                            data: [38, 33, 36, totalPresent],
+                            backgroundColor: ['#cbd5e1', '#cbd5e1', '#cbd5e1', '#4f46e5'],
+                            borderRadius: 4, barPercentage: 0.6
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false, min: 0 }, x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8' } } }, animation: { onComplete: function() { const chartInstance = this; const ctx = chartInstance.ctx; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.font = 'bold 11px "Noto Sans KR"'; chartInstance.data.datasets[0].data.forEach(function(val, i) { const meta = chartInstance.getDatasetMeta(0); const bar = meta.data[i]; ctx.fillStyle = i === 3 ? '#312e81' : '#64748b'; ctx.fillText(val, bar.x, bar.y - 4); }); } } }
+                });
+            }, 100);
+        }
+
+        function fillReportInputs() {
+            document.getElementById('rep-preacher').value = currentReportDetails.preacher || ""; document.getElementById('rep-scripture').value = currentReportDetails.scripture || ""; document.getElementById('rep-title').value = currentReportDetails.title || ""; document.getElementById('rep-vice-preacher').value = currentReportDetails.vicePreacher || "";
+        }
+
+        function scaleReport() {
+            const container = document.getElementById('report-container'); const page = document.getElementById('a4-content');
+            const w = container.clientWidth;
+            if(w < 820) { const scale = w / 820; page.style.transform = `scale(${scale})`; page.style.transformOrigin = 'top center'; container.style.height = `${1123 * scale + 40}px`; }
+            else { page.style.transform = 'none'; container.style.height = 'auto'; }
+        }
+
+        window.openAbsenteeModal = function() {
+            const listContainer = document.getElementById('absentee-list-container'); listContainer.innerHTML = '';
+            let absentees = []; Object.keys(allMembersObj).forEach(gKey => { (allMembersObj[gKey]||[]).forEach(name => { if(!presentSet.has(name) && !absentees.includes(name)) absentees.push(name); }); });
+            absentees.sort().forEach(name => {
+                const hasReason = !!absenteeReasons[name]; const btn = document.createElement('button'); btn.className = `w-full text-left p-3 rounded-lg border-2 mb-2 font-bold text-sm transition-all ${hasReason ? 'border-orange-500 bg-orange-50 text-orange-900' : 'border-slate-200 bg-white text-slate-500'}`;
+                btn.innerHTML = `<div class="flex justify-between"><span>${name}</span><span class="text-xs px-2 py-0.5 rounded-full ${hasReason?'bg-orange-500 text-white':'bg-slate-200'}">${hasReason?'입력됨':'사유 입력'}</span></div>${hasReason ? `<div class="mt-2 text-orange-700 bg-white p-2 border border-orange-200">👉 ${absenteeReasons[name]}</div>` : ''}`;
+                btn.onclick = () => { const reason = prompt(`[${name}] 결석 사유 입력:`, absenteeReasons[name] || ""); if(reason !== null) { if(reason.trim()==="") delete absenteeReasons[name]; else absenteeReasons[name] = reason.trim(); openAbsenteeModal(); updateAbsenteeBadge(); } };
+                listContainer.appendChild(btn);
+            });
+            document.getElementById('absentee-modal').style.display = 'flex';
+        }
+        window.closeAbsenteeModal = function() { document.getElementById('absentee-modal').style.display = 'none'; }
+        function updateAbsenteeBadge() { document.getElementById('absentee-count-badge').innerText = `${Object.keys(absenteeReasons).length}명 작성됨`; }
+        function checkServerStatus() { document.getElementById('db-status').innerText = `🟢 서버 연동 완료! (${allMembersObj[Object.keys(allMembersObj)[0]]?.length || 0}명 로드됨)`; document.getElementById('db-status').className = "text-[11px] font-bold text-green-600 mt-2 text-center"; }
+        window.addEventListener('resize', () => { if(document.getElementById('report-view').style.display === 'block') scaleReport(); });
+        window.onload = initApp;
+    </script>
+</body>
+</html>
