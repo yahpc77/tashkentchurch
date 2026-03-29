@@ -114,7 +114,7 @@
     </div>
 
     <script>
-        // 🚨 [필요한 부서명으로 바꾸세요: 유초등부, 중고등부, 유아부]
+        // 🚨 [중고등부, 유초등부, 유아부 중에 선택해서 쓰세요!]
         const DEPT_NAME = "중고등부"; 
 
         const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
@@ -126,7 +126,7 @@
         let currentReportDetails = {}; 
         let teacherSet = new Set(); // 교사 명단 추적용 세트
 
-        // 🚨 폴더명 자동 분해 마법 (유초등부_6학년_김희란 -> 반: 6학년, 교사: 김희란)
+        // 폴더명 자동 분해 마법 (유초등부_6학년_김희란 -> 반: 6학년, 교사: 김희란)
         function parseGroupInfo(groupKey) {
             const prefix = DEPT_NAME + "_"; if (!groupKey.startsWith(prefix)) return null;
             const rest = groupKey.substring(prefix.length); 
@@ -228,12 +228,10 @@
             let currentStudentCount = 0;
             teacherSet.clear(); // 교사 명단 초기화
 
-            // 1차 패스: 선생님 명단 미리 싹 다 골라내기 (투명인간 마법 준비)
+            // 1차 패스: 선생님 명단 미리 싹 다 골라내기
             groupKeys.forEach(gKey => {
                 const info = parseGroupInfo(gKey); if (!info) return;
-                // 폴더 이름 뒤에 붙은 선생님 이름 등록
                 if (info.teacherName) teacherSet.add(info.teacherName);
-                // 혹시 '교사'나 '임원' 폴더가 따로 있다면 그 안의 사람들도 다 선생님으로 등록
                 if (info.className.includes('교사') || info.className.includes('임원') || info.className.includes('부장') || info.className.includes('전도사')) {
                     (allMembersObj[gKey] || []).forEach(name => teacherSet.add(name));
                 }
@@ -249,11 +247,10 @@
                 
                 const section = document.createElement('div'); section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
                 
-                // 🚨 교사 버튼 UI 완벽 해결! (노란 뱃지 -> 학생과 똑같이 파란불 들어오는 정상 버튼으로 변경)
+                // 교사 버튼 
                 let teacherBtnHtml = '';
                 if (info.teacherName) {
                     const isTPresent = presentSet.has(info.teacherName);
-                    // 흰 바탕 ↔ 파란 바탕 완벽 연동
                     const tClass = isTPresent ? 'bg-blue-600 text-white border-blue-800 shadow-md' : 'bg-white text-slate-700 border-slate-300';
                     teacherBtnHtml = `<button onclick="toggleAttendance('${info.teacherName}')" class="px-3 py-1.5 rounded-lg border-2 font-black text-sm active:scale-95 transition-all ${tClass}">👑 ${info.teacherName} (교사)</button>`;
                 }
@@ -264,7 +261,7 @@
                 (hasKeyword ? filteredMembers : displayMembers).forEach(name => {
                     const isPresent = presentSet.has(name); 
                     
-                    // 🚨 투명인간 마법 적용: 교사가 아니면서 파란불 켜진 사람만 카운트!
+                    // 학생만 카운트
                     if (isPresent && !teacherSet.has(name)) {
                         currentStudentCount++;
                     }
@@ -294,7 +291,6 @@
                 visSection.appendChild(visGrid); container.appendChild(visSection);
             }
 
-            // 하단 카운터 업데이트 (순수 학생 + 새친구)
             document.getElementById('count-display').innerText = currentStudentCount + visitorsNew.length;
         }
 
@@ -319,7 +315,7 @@
         window.closeReportCenter = function() { document.getElementById('report-modal').style.display = 'none'; }
         window.closeReportView = function() { document.getElementById('report-view').style.display = 'none'; document.getElementById('main-app').style.display = 'block'; }
 
-        // 🚨 V7 교육부서 찐최종 보고서 생성 (교사 분리 마법 적용)
+        // 🚨 V7 교육부서 찐최종 보고서 생성 (교사 전용 그룹 보고서에서 완벽 삭제!)
         window.generateA4Report = async function() {
             const dateVal = document.getElementById('today-date').value;
             const targetDateStr = dateVal.replace(/-/g, '. ');
@@ -329,17 +325,21 @@
             const title = currentReportDetails.title || "미입력";
 
             let groupRowsHtml = '';
-            let globalStudentPresentCount = visitorsNew.length; // 총 학생수 (방문자 포함)
+            let globalStudentPresentCount = visitorsNew.length; // 총 학생수
             
             const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
             
             groupKeys.forEach((gKey) => {
                 const info = parseGroupInfo(gKey);
                 
+                // 🚨 흉물스러운 '교사및임원' 블록 보고서에서 아예 렌더링 스킵해버리기!!!
+                if(info.className.includes('교사') || info.className.includes('임원') || info.className.includes('부장') || info.className.includes('전도사')) {
+                    return; // 표 그리지 않고 건너뜀
+                }
+
                 let studentPresent = []; let studentAbsent = [];
                 let studentCountInClass = 0;
 
-                // 해당 폴더 내의 학생들 체크
                 (allMembersObj[gKey]||[]).forEach(name => {
                     const isPresent = presentSet.has(name);
                     if(!teacherSet.has(name)) {
@@ -348,45 +348,24 @@
                     }
                 });
 
-                // 교사 표시 마법 (출석: 파란색 / 결석: 회색 괄호)
                 let teacherHtml = '-';
                 if(info.teacherName) {
                     const isTPresent = presentSet.has(info.teacherName);
                     teacherHtml = isTPresent ? `<span class="font-black text-blue-800">${info.teacherName}</span>` : `<span class="font-medium text-slate-400">(${info.teacherName})</span>`;
                 }
 
-                // 일반 학생 반 렌더링
-                if(!info.className.includes('교사') && !info.className.includes('임원')) {
-                    if(studentPresent.length > 0 || studentAbsent.length > 0 || info.teacherName) {
-                        groupRowsHtml += `
-                            <tr>
-                                <td class="font-black text-slate-800 bg-slate-50">${info.className}</td>
-                                <td class="font-black text-blue-700">${studentCountInClass}명</td>
-                                <td class="text-left text-slate-800 font-bold leading-relaxed">${studentPresent.join(', ') || '-'}</td>
-                                <td class="text-left text-red-500 font-medium leading-relaxed">${studentAbsent.join(', ') || '-'}</td>
-                                <td class="text-sm">${teacherHtml}</td>
-                            </tr>`;
-                    }
-                } else {
-                    // 혹시 '교사및임원' 같은 교사 전용 폴더가 있다면 하단에 따로 표기
-                    let extraTeachers = [];
-                    (allMembersObj[gKey]||[]).forEach(name => {
-                        const isPresent = presentSet.has(name);
-                        extraTeachers.push(isPresent ? `<span class="font-black text-blue-800">${name}</span>` : `<span class="font-medium text-slate-400">(${name})</span>`);
-                    });
-                    if(extraTeachers.length > 0) {
-                        groupRowsHtml += `
-                            <tr>
-                                <td class="font-black text-slate-800 bg-slate-50">${info.className}</td>
-                                <td class="font-black text-slate-400">-</td>
-                                <td colspan="2" class="text-center text-slate-400 text-xs tracking-widest font-bold bg-slate-50">해당 칸은 학생 명단 전용입니다</td>
-                                <td class="text-sm leading-relaxed">${extraTeachers.join(', ')}</td>
-                            </tr>`;
-                    }
+                if(studentPresent.length > 0 || studentAbsent.length > 0 || info.teacherName) {
+                    groupRowsHtml += `
+                        <tr>
+                            <td class="font-black text-slate-800 bg-slate-50">${info.className}</td>
+                            <td class="font-black text-blue-700">${studentCountInClass}명</td>
+                            <td class="text-left text-slate-800 font-bold leading-relaxed">${studentPresent.join(', ') || '-'}</td>
+                            <td class="text-left text-red-500 font-medium leading-relaxed">${studentAbsent.join(', ') || '-'}</td>
+                            <td class="text-sm">${teacherHtml}</td>
+                        </tr>`;
                 }
             });
 
-            // 스냅샷 저장
             db.ref(`attendance/${dateVal}/${DEPT_NAME}/total_snapshot`).set(globalStudentPresentCount);
 
             const visHtml = visitorsNew.map(v=>`${v.name}(${v.reason})`).join(', ') || "없음";
@@ -484,12 +463,10 @@
             const listContainer = document.getElementById('absentee-list-container'); listContainer.innerHTML = '';
             let absentees = []; 
             
-            // 🚨 결석한 선생님들도 사유 입력칸에 자동 추가!
             teacherSet.forEach(tName => {
                 if(!presentSet.has(tName)) absentees.push(tName + " (교사)");
             });
 
-            // 학생들 추가
             Object.keys(allMembersObj).forEach(gKey => { 
                 (allMembersObj[gKey]||[]).forEach(name => { 
                     if(!presentSet.has(name) && !teacherSet.has(name) && !absentees.includes(name)) absentees.push(name); 
@@ -498,7 +475,7 @@
 
             absentees.forEach(name => {
                 const isTeacher = name.includes("(교사)");
-                const realName = isTeacher ? name.replace(" (교사)", "") : name; // 저장할 땐 원래 이름으로!
+                const realName = isTeacher ? name.replace(" (교사)", "") : name; 
                 const hasReason = !!absenteeReasons[realName]; 
                 
                 const btn = document.createElement('button'); 
