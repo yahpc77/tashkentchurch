@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>⛪ 대예배 출석부 V7 (찐최종판)</title>
     
+    <!-- 🚀 큐가 추가한 모바일 바탕화면(PWA) 마법의 코드 시작 -->
+    <link rel="apple-touch-icon" href="logo.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1e3a8a">
+    <link rel="manifest" href='data:application/manifest+json,{"name":"타슈켄트 한인교회 출석부","short_name":"출석부","display":"standalone","background_color":"#f8fafc","theme_color":"#1e3a8a","icons":[{"src":"logo.png","sizes":"192x192","type":"image/png"},{"src":"logo.png","sizes":"512x512","type":"image/png"}]}'>
+    <!-- 🚀 마법의 코드 끝 -->
+
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -544,7 +552,7 @@
                     <div class="text-right font-black text-blue-900 text-[15px] mb-2">전교인 총 출석: ${totalAllDepts}명</div>
                     <table class="w-full border-2 border-slate-800 text-[13px] mb-6 dense-table">
                         <thead class="bg-gray-100 font-black text-center border-b border-black"><tr><th>부서</th><th>출석수</th><th class="text-blue-700">출석자 명단 ✅</th><th class="text-red-600">결석자 명단 ❌</th></tr></thead>
-                        <tbody>${tbodyHtml3}</tbody>
+                        <tbody class="text-left font-bold text-slate-800">${tbodyHtml3}</tbody>
                     </table>`;
                     document.getElementById('a4-content').innerHTML = html.replace('<p class="text-center text-blue-600 font-bold my-10">데이터 집계 중입니다...</p>', finalHtml); 
                     scaleReport(); 
