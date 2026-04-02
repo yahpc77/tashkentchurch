@@ -1,6 +1,7 @@
 {
   "name": "타슈켄트 한인교회 중고등부",
   "short_name": "중고등부",
+  "start_url": "middle.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1e3a8a",
