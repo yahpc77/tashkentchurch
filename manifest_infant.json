@@ -1,0 +1,15 @@
+{
+  "name": "타슈켄트 한인교회 유아부",
+  "short_name": "유아부",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e3a8a",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
