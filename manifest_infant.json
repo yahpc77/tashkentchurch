@@ -1,6 +1,7 @@
 {
   "name": "타슈켄트 한인교회 유아부",
   "short_name": "유아부",
+  "start_url": "infant.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1e3a8a",
