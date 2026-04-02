@@ -1,6 +1,7 @@
 {
   "name": "타슈켄트 한인교회 청년부",
   "short_name": "청년부",
+  "start_url": "youth.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1e3a8a",
