@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>⛪ 교육부서 출석 마스터 V7 (교사 완벽분리)</title>
+    <title>⛪ 유초등부 출석 마스터 V7.2 (교사분리 & 완벽자동화)</title>
     <link rel="manifest" href="manifest_child.json">
     <link rel="apple-touch-icon" href="logo.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,9 +15,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; user-select: none; }
         
-        .member-btn { transition: transform 0.1s ease; border-radius: 0.5rem; padding-top: 0.65rem; padding-bottom: 0.65rem; font-size: 14.5px; font-weight: 900; letter-spacing: -0.5px; cursor: pointer; }
+        .member-btn { transition: transform 0.1s ease; border-radius: 0.5rem; padding-top: 0.65rem; padding-bottom: 0.65rem; font-size: 14.5px; font-weight: 900; letter-spacing: -0.5px; cursor: pointer; user-select: none; -webkit-user-select: none; }
         .member-btn:active { transform: scale(0.92); }
         .status-absent { background-color: #ffffff; color: #475569; border: 1.5px solid #cbd5e1; }
         .status-present { background-color: #2563eb; color: white; border: 1.5px solid #1e3a8a; box-shadow: 0 4px 6px rgba(37,99,235,0.3); }
@@ -34,7 +34,7 @@
         .highlight-search { animation: pulse-border 1.2s infinite; background-color: #fef08a !important; color: #b45309 !important; border: 2.5px solid #ea580c !important; transform: scale(1.05) !important; z-index: 10 !important; }
         @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(234, 88, 12, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); } }
         
-        #report-modal, #absentee-modal, #report-view { display: none; }
+        #report-modal, #absentee-modal, #report-view, #reason-select-modal { display: none; }
         
         #report-container { width: 100%; display: flex; justify-content: center; overflow-x: hidden; background: #e5e7eb; padding: 20px 0; }
         .a4-page { width: 794px !important; min-width: 794px !important; max-width: 794px !important; min-height: 1123px; background: white; padding: 40px 50px; box-sizing: border-box; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin: 0 auto; transform-origin: top center; }
@@ -45,7 +45,7 @@
         
         @media print {
             body { background-color: white; margin: 0; padding: 0; }
-            #main-app, #report-modal, #absentee-modal, .no-print { display: none !important; }
+            #main-app, #report-modal, #absentee-modal, #reason-select-modal, .no-print { display: none !important; }
             #report-view { display: block !important; padding: 0; background: white; }
             #report-container { height: auto !important; padding: 0; background: white; }
             .a4-page { box-shadow: none; width: 100% !important; max-width: 100% !important; padding: 10mm; transform: none !important; margin: 0 !important; }
@@ -86,6 +86,7 @@
         </div>
     </div>
 
+    <!-- 보고서 작성 센터 -->
     <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border-t-8 border-indigo-600 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-black text-indigo-900 tracking-tight">🗂️ 보고서 센터</h2><button onclick="closeReportCenter()" class="text-gray-400 font-bold text-xl">&times;</button></div>
@@ -94,18 +95,38 @@
                 <input type="text" id="rep-scripture" placeholder="본문 (예: 롬 8장 2절)" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
                 <input type="text" id="rep-title" placeholder="제목 (예: 나의 가장 친한친구)" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
             </div>
-            <button onclick="openAbsenteeModal()" class="w-full bg-orange-100 text-orange-700 border border-orange-300 py-3 rounded-xl font-black text-sm mb-6 active:scale-95 flex justify-between px-4 items-center transition-transform"><span>✍️ 결석자 사유 / 특이사항 입력</span><span id="absentee-count-badge" class="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">0명 완료</span></button>
-            <button onclick="generateA4Report()" class="w-full bg-indigo-700 text-white py-4 rounded-xl font-black text-base shadow-lg active:scale-95 transition-transform text-center">🚀 V7 예배 보고서(PDF) 생성</button>
+            <button onclick="openAbsenteeModal()" class="w-full bg-orange-100 text-orange-700 border border-orange-300 py-3 rounded-xl font-black text-sm mb-6 active:scale-95 flex justify-between px-4 items-center transition-transform"><span>✍️ 결석 사유(영구기억) 입력</span><span id="absentee-count-badge" class="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">0명 완료</span></button>
+            <button onclick="generateA4Report()" class="w-full bg-indigo-700 text-white py-4 rounded-xl font-black text-base shadow-lg active:scale-95 transition-transform text-center">🚀 V7.2 예배 보고서(PDF) 생성</button>
         </div>
     </div>
 
+    <!-- 결석자 명단 모달 -->
     <div id="absentee-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl p-5 shadow-2xl flex flex-col h-[80vh]">
-            <div class="flex justify-between items-center mb-3"><h2 class="text-lg font-black text-orange-700">✍️ 결석 사유 입력</h2><button onclick="closeAbsenteeModal()" class="text-gray-500 font-bold bg-gray-100 px-3 py-1 rounded-lg text-sm">완료</button></div>
+            <div class="flex justify-between items-center mb-3"><h2 class="text-lg font-black text-orange-700">✍️ 결석 사유 (영구기억)</h2><button onclick="closeAbsenteeModal()" class="text-gray-500 font-bold bg-gray-100 px-3 py-1 rounded-lg text-sm">완료</button></div>
+            <p class="text-[11px] text-slate-500 mb-2 leading-tight">이름을 클릭하여 사유를 선택/작성하세요.<br>입력된 사유는 출석하기 전까지 매주 유지됩니다.</p>
             <div id="absentee-list-container" class="overflow-y-auto flex-1 space-y-2 bg-slate-50 p-2 rounded-lg border border-slate-200"></div>
         </div>
     </div>
 
+    <!-- 🚀 심플 3버튼 사유 선택 팝업 -->
+    <div id="reason-select-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] flex justify-center items-end p-0 sm:items-center sm:p-4">
+        <div class="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl pb-10 sm:pb-6 transform transition-transform">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-black text-indigo-900" id="reason-target-name">홍길동</h2>
+                <button onclick="closeReasonModal()" class="bg-gray-100 text-gray-500 px-3 py-1 rounded-lg font-bold text-sm">닫기</button>
+            </div>
+            <p class="text-xs text-gray-500 font-bold mb-4">해당 학생(또는 교사)의 사유를 선택해주세요.</p>
+            <div class="space-y-2">
+                <button onclick="setReason('한국방문')" class="w-full bg-blue-50 border border-blue-200 text-blue-800 py-3 rounded-xl font-black text-left px-4 flex justify-between active:scale-95"><span>1. 🇰🇷 한국 방문</span><span class="text-xs text-blue-500 font-normal mt-0.5">상태 고정</span></button>
+                <button onclick="setReason('타슈켄트 결석')" class="w-full bg-teal-50 border border-teal-200 text-teal-800 py-3 rounded-xl font-black text-left px-4 flex justify-between active:scale-95"><span>2. 🇺🇿 타슈켄트 결석</span><span class="text-xs text-teal-500 font-normal mt-0.5">상태 고정</span></button>
+                <button onclick="openReasonInput()" class="w-full bg-orange-50 border border-orange-200 text-orange-800 py-3 rounded-xl font-black text-left px-4 flex justify-between active:scale-95"><span>3. 📝 사유 직접 작성</span><span class="text-xs text-orange-500 font-bold mt-0.5">보고서 출력</span></button>
+            </div>
+            <button onclick="clearReason()" class="w-full mt-4 bg-gray-200 text-gray-600 py-3 rounded-xl font-black text-sm active:scale-95">🗑️ 기존 사유 지우기 (초기화)</button>
+        </div>
+    </div>
+
+    <!-- 인쇄용 뷰 -->
     <div id="report-view" class="bg-gray-200 min-h-screen w-full overflow-y-auto overflow-x-hidden">
         <div class="text-center py-6 no-print flex gap-3 justify-center w-full px-4 bg-slate-800 shadow-md">
             <button onclick="closeReportView()" class="flex-1 max-w-[200px] bg-slate-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 transition-transform text-lg border border-slate-500">🔙 뒤로가기</button>
@@ -117,7 +138,7 @@
     </div>
 
     <script>
-        // 🚨 [필요한 부서명으로 바꾸세요: 유초등부, 중고등부, 유아부]
+        // 🚨 [필요한 부서명 세팅 완료]
         const DEPT_NAME = "유초등부"; 
 
         const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
@@ -125,11 +146,12 @@
         const db = firebase.database();
         
         let allMembersObj = {}; let presentSet = new Set();
-        let visitorsNew = []; let visitorsRecurring = []; let absenteeReasons = {}; 
+        let visitorsNew = []; let visitorsRecurring = []; 
+        let globalAbsenteeReasons = {}; // 🚀 영구기억 보관소
         let currentReportDetails = {}; 
-        let teacherSet = new Set(); // 교사 명단 추적용 세트
+        let teacherSet = new Set(); 
+        let currentReasonTarget = ""; 
 
-        // 🚨 폴더명 자동 분해 마법 (유초등부_6학년_김희란 -> 반: 6학년, 교사: 김희란)
         function parseGroupInfo(groupKey) {
             const prefix = DEPT_NAME + "_"; if (!groupKey.startsWith(prefix)) return null;
             const rest = groupKey.substring(prefix.length); 
@@ -140,7 +162,7 @@
         }
 
         function initApp() {
-            document.getElementById('app-title').innerText = `⛪ ${DEPT_NAME} 출석부 V7`;
+            document.getElementById('app-title').innerText = `⛪ ${DEPT_NAME} 출석부 V7.2`;
             document.getElementById('today-date').value = new Date().toISOString().split('T')[0];
             
             db.ref('members').on('value', (snap) => {
@@ -155,6 +177,13 @@
                 checkServerStatus();
                 startAttendanceSync(); 
             });
+
+            // 🚀 글로벌 영구 사유 동기화
+            db.ref(`global_absentee_reasons_${DEPT_NAME}`).on('value', snap => {
+                globalAbsenteeReasons = snap.val() || {};
+                updateAbsenteeBadge();
+            });
+
             document.getElementById('today-date').addEventListener('change', startAttendanceSync);
         }
 
@@ -174,10 +203,7 @@
                 if(data.visitorsNew) visitorsNew = data.visitorsNew;
                 if(data.visitorsRecurring) visitorsRecurring = data.visitorsRecurring;
                 
-                db.ref(`attendance/${dateStr}/absentees_${DEPT_NAME}`).once('value').then(snap => {
-                    absenteeReasons = snap.val() || {};
-                    updateAbsenteeBadge(); renderLists(); 
-                });
+                updateAbsenteeBadge(); renderLists(); 
             });
 
             db.ref(`attendance/${dateStr}/report_details_${DEPT_NAME}`).on('value', snap => {
@@ -190,6 +216,9 @@
             const isPresent = presentSet.has(name);
             db.ref(`attendance/${dateStr}/${DEPT_NAME}/present_list/${name}`).set(isPresent ? null : true);
             document.getElementById('search-input').value = ""; 
+            
+            // 🚀 출석 시 영구 기억 사유 자동 소멸!
+            if(!isPresent) db.ref(`global_absentee_reasons_${DEPT_NAME}/${name}`).remove();
         }
 
         window.moveOrAddFriend = function(targetGroupKey) {
@@ -224,25 +253,64 @@
             }
         };
 
+        // 🚀 길게 눌러 삭제
+        function findGroupByName(name) {
+            for (let k in allMembersObj) { if ((allMembersObj[k] || []).includes(name)) return k; }
+            return null;
+        }
+
+        window.deleteMember = function(name, groupKey) {
+            if(!groupKey) return;
+            if(confirm(`🚨 주의!\n[${name}] 성도를 명단에서 완전히 삭제하시겠습니까?`)) {
+                let targetArr = allMembersObj[groupKey] || [];
+                let updatedArr = targetArr.filter(n => n !== name);
+                db.ref('members/' + groupKey).set(updatedArr).then(() => {
+                    db.ref(`attendance/${document.getElementById('today-date').value}/${DEPT_NAME}/present_list/${name}`).remove();
+                    db.ref(`global_absentee_reasons_${DEPT_NAME}/${name}`).remove();
+                    alert(`🗑️ [${name}] 삭제 완료!`);
+                });
+            }
+        };
+
         function renderLists() {
             const container = document.getElementById('members-container'); container.innerHTML = ''; const keyword = document.getElementById('search-input').value.trim();
             const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
             
             let currentStudentCount = 0;
-            teacherSet.clear(); // 교사 명단 초기화
+            teacherSet.clear(); 
 
-            // 1차 패스: 선생님 명단 미리 싹 다 골라내기 (투명인간 마법 준비)
+            // 1차 패스: 교사 색출
             groupKeys.forEach(gKey => {
                 const info = parseGroupInfo(gKey); if (!info) return;
-                // 폴더 이름 뒤에 붙은 선생님 이름 등록
                 if (info.teacherName) teacherSet.add(info.teacherName);
-                // 혹시 '교사'나 '임원' 폴더가 따로 있다면 그 안의 사람들도 다 선생님으로 등록
                 if (info.className.includes('교사') || info.className.includes('임원') || info.className.includes('부장') || info.className.includes('전도사')) {
                     (allMembersObj[gKey] || []).forEach(name => teacherSet.add(name));
                 }
             });
 
-            // 2차 패스: 화면 그리기
+            // 🚀 길게 누르기 이벤트 함수
+            const addLongPressEvent = (btn, name, groupKey) => {
+                let pressTimer; let isLongPress = false;
+                const startPress = (e) => { 
+                    isLongPress = false; 
+                    pressTimer = setTimeout(() => { isLongPress = true; deleteMember(name, groupKey || findGroupByName(name)); }, 800);
+                };
+                const cancelPress = () => { clearTimeout(pressTimer); };
+                
+                btn.addEventListener('touchstart', startPress, {passive: true});
+                btn.addEventListener('touchend', cancelPress);
+                btn.addEventListener('touchmove', cancelPress, {passive: true});
+                btn.addEventListener('mousedown', startPress);
+                btn.addEventListener('mouseup', cancelPress);
+                btn.addEventListener('mouseleave', cancelPress);
+                
+                btn.onclick = (e) => {
+                    if(isLongPress) { e.preventDefault(); return; }
+                    toggleAttendance(name);
+                    if(keyword) document.getElementById('search-input').value = ""; 
+                };
+            };
+
             groupKeys.forEach(gKey => {
                 const info = parseGroupInfo(gKey); if (!info) return;
                 let membersArr = allMembersObj[gKey] || []; let displayMembers = [...membersArr];
@@ -252,11 +320,9 @@
                 
                 const section = document.createElement('div'); section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
                 
-                // 🚨 교사 버튼 UI 완벽 해결! (노란 뱃지 -> 학생과 똑같이 파란불 들어오는 정상 버튼으로 변경)
                 let teacherBtnHtml = '';
                 if (info.teacherName) {
                     const isTPresent = presentSet.has(info.teacherName);
-                    // 흰 바탕 ↔ 파란 바탕 완벽 연동
                     const tClass = isTPresent ? 'bg-blue-600 text-white border-blue-800 shadow-md' : 'bg-white text-slate-700 border-slate-300';
                     teacherBtnHtml = `<button onclick="toggleAttendance('${info.teacherName}')" class="px-3 py-1.5 rounded-lg border-2 font-black text-sm active:scale-95 transition-all ${tClass}">👑 ${info.teacherName} (교사)</button>`;
                 }
@@ -267,10 +333,7 @@
                 (hasKeyword ? filteredMembers : displayMembers).forEach(name => {
                     const isPresent = presentSet.has(name); 
                     
-                    // 🚨 투명인간 마법 적용: 교사가 아니면서 파란불 켜진 사람만 카운트!
-                    if (isPresent && !teacherSet.has(name)) {
-                        currentStudentCount++;
-                    }
+                    if (isPresent && !teacherSet.has(name)) { currentStudentCount++; }
 
                     const btn = document.createElement('button');
                     let isMatch = hasKeyword && name.includes(keyword);
@@ -280,7 +343,7 @@
                     if(name.length > 5) displayName = `<span class="text-[11px] leading-none">${name}</span>`;
                     
                     btn.innerHTML = displayName; 
-                    btn.onclick = () => toggleAttendance(name); 
+                    addLongPressEvent(btn, name, gKey);
                     grid.appendChild(btn);
                 });
                 
@@ -297,7 +360,6 @@
                 visSection.appendChild(visGrid); container.appendChild(visSection);
             }
 
-            // 하단 카운터 업데이트 (순수 학생 + 새친구)
             document.getElementById('count-display').innerText = currentStudentCount + visitorsNew.length;
         }
 
@@ -314,15 +376,89 @@
             const targetDate = document.getElementById('today-date').value;
             currentReportDetails = { preacher: document.getElementById('rep-preacher').value, scripture: document.getElementById('rep-scripture').value, title: document.getElementById('rep-title').value };
             db.ref(`attendance/${targetDate}/report_details_${DEPT_NAME}`).set(currentReportDetails);
-            db.ref(`attendance/${targetDate}/absentees_${DEPT_NAME}`).set(absenteeReasons);
-            alert(`💾 최종 보고서 저장 완료!`);
+            db.ref(`attendance/${targetDate}/${DEPT_NAME}/total_snapshot`).set(parseInt(document.getElementById('count-display').innerText));
+            alert(`💾 최종 보고서 텍스트 및 학생 출석 인원 저장 완료!`);
         }
 
         window.openReportCenter = function() { document.getElementById('report-modal').style.display = 'flex'; }
         window.closeReportCenter = function() { document.getElementById('report-modal').style.display = 'none'; }
         window.closeReportView = function() { document.getElementById('report-view').style.display = 'none'; document.getElementById('main-app').style.display = 'block'; }
 
-        // 🚨 V7 교육부서 찐최종 보고서 생성 (교사 분리 마법 적용)
+        function getAbsentees() {
+            let absentees = []; 
+            teacherSet.forEach(tName => { if(!presentSet.has(tName)) absentees.push(tName + " (교사)"); });
+            Object.keys(allMembersObj).forEach(gKey => { 
+                (allMembersObj[gKey]||[]).forEach(name => { 
+                    if(!presentSet.has(name) && !teacherSet.has(name) && !absentees.includes(name)) absentees.push(name); 
+                }); 
+            });
+            return absentees;
+        }
+
+        // 🚀 사유 입력 3버튼 로직
+        window.openReasonModalFor = function(name) {
+            currentReasonTarget = name.replace(" (교사)", "");
+            document.getElementById('reason-target-name').innerText = name;
+            document.getElementById('reason-select-modal').style.display = 'flex';
+        }
+        window.closeReasonModal = function() { document.getElementById('reason-select-modal').style.display = 'none'; }
+        
+        window.setReason = function(type) {
+            db.ref(`global_absentee_reasons_${DEPT_NAME}/${currentReasonTarget}`).set(type);
+            closeReasonModal(); window.openAbsenteeModal();
+        }
+        window.openReasonInput = function() {
+            let input = prompt(`[${currentReasonTarget}] 사유 직접 작성:\n(예: 독감, 가족여행, 시골방문 등)`);
+            if(input !== null && input.trim() !== "") {
+                db.ref(`global_absentee_reasons_${DEPT_NAME}/${currentReasonTarget}`).set(input.trim());
+                closeReasonModal(); window.openAbsenteeModal();
+            }
+        }
+        window.clearReason = function() {
+            db.ref(`global_absentee_reasons_${DEPT_NAME}/${currentReasonTarget}`).remove();
+            closeReasonModal(); window.openAbsenteeModal();
+        }
+
+        window.openAbsenteeModal = function() {
+            const listContainer = document.getElementById('absentee-list-container'); listContainer.innerHTML = '';
+            const absentees = getAbsentees();
+
+            absentees.forEach(name => {
+                const isTeacher = name.includes("(교사)");
+                const realName = isTeacher ? name.replace(" (교사)", "") : name; 
+                const reason = globalAbsenteeReasons[realName] || "";
+                const hasReason = !!reason; 
+                
+                let badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">미분류</span>';
+                if(hasReason) {
+                    if(reason === '한국방문') badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500 text-white">🇰🇷 한국</span>';
+                    else if(reason === '타슈켄트 결석') badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-500 text-white">🇺🇿 타슈켄트</span>';
+                    else badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-orange-500 text-white font-bold shadow-sm">📝 사유</span>';
+                }
+                
+                const btn = document.createElement('button'); 
+                btn.className = `w-full text-left p-3 rounded-lg border-2 mb-2 font-bold text-sm transition-all ${hasReason ? 'border-orange-400 bg-orange-50 text-orange-900' : 'border-slate-200 bg-white text-slate-500'}`;
+                btn.innerHTML = `<div class="flex justify-between"><span>${isTeacher ? '👑 ' : ''}${realName}</span>${badgeHtml}</div>${hasReason ? `<div class="mt-2 text-orange-800 font-medium bg-white p-2 border border-orange-200 rounded text-xs">👉 ${reason}</div>` : ''}`;
+                btn.onclick = () => { openReasonModalFor(name); };
+                listContainer.appendChild(btn);
+            });
+            document.getElementById('absentee-modal').style.display = 'flex';
+        }
+        window.closeAbsenteeModal = function() { document.getElementById('absentee-modal').style.display = 'none'; }
+        
+        function updateAbsenteeBadge() { 
+            let count = 0; getAbsentees().forEach(n => { let real = n.replace(" (교사)", ""); if(globalAbsenteeReasons[real]) count++; });
+            document.getElementById('absentee-count-badge').innerText = `${count}명 완료`; 
+        }
+
+        // 🚀 과거 3주 데이터 긁어오기
+        const getPastCount = async (daysAgo) => {
+            let d = new Date(document.getElementById('today-date').value); d.setDate(d.getDate() - daysAgo);
+            let pDate = d.toISOString().split('T')[0];
+            let snap = await db.ref(`attendance/${pDate}/${DEPT_NAME}/total_snapshot`).once('value');
+            return snap.val() || null;
+        };
+
         window.generateA4Report = async function() {
             const dateVal = document.getElementById('today-date').value;
             const targetDateStr = dateVal.replace(/-/g, '. ');
@@ -332,46 +468,15 @@
             const title = currentReportDetails.title || "미입력";
 
             let groupRowsHtml = '';
-            let globalStudentPresentCount = visitorsNew.length; // 총 학생수 (방문자 포함)
+            let globalStudentPresentCount = visitorsNew.length; 
             
             const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
             
             groupKeys.forEach((gKey) => {
                 const info = parseGroupInfo(gKey);
                 
-                let studentPresent = []; let studentAbsent = [];
-                let studentCountInClass = 0;
-
-                // 해당 폴더 내의 학생들 체크
-                (allMembersObj[gKey]||[]).forEach(name => {
-                    const isPresent = presentSet.has(name);
-                    if(!teacherSet.has(name)) {
-                        if(isPresent) { studentPresent.push(name); studentCountInClass++; globalStudentPresentCount++; }
-                        else studentAbsent.push(name);
-                    }
-                });
-
-                // 교사 표시 마법 (출석: 파란색 / 결석: 회색 괄호)
-                let teacherHtml = '-';
-                if(info.teacherName) {
-                    const isTPresent = presentSet.has(info.teacherName);
-                    teacherHtml = isTPresent ? `<span class="font-black text-blue-800">${info.teacherName}</span>` : `<span class="font-medium text-slate-400">(${info.teacherName})</span>`;
-                }
-
-                // 일반 학생 반 렌더링
-                if(!info.className.includes('교사') && !info.className.includes('임원')) {
-                    if(studentPresent.length > 0 || studentAbsent.length > 0 || info.teacherName) {
-                        groupRowsHtml += `
-                            <tr>
-                                <td class="font-black text-slate-800 bg-slate-50">${info.className}</td>
-                                <td class="font-black text-blue-700">${studentCountInClass}명</td>
-                                <td class="text-left text-slate-800 font-bold leading-relaxed">${studentPresent.join(', ') || '-'}</td>
-                                <td class="text-left text-red-500 font-medium leading-relaxed">${studentAbsent.join(', ') || '-'}</td>
-                                <td class="text-sm">${teacherHtml}</td>
-                            </tr>`;
-                    }
-                } else {
-                    // 혹시 '교사및임원' 같은 교사 전용 폴더가 있다면 하단에 따로 표기
+                // 🚨 교사 전용 폴더 렌더링 방식
+                if(info.className.includes('교사') || info.className.includes('임원') || info.className.includes('부장') || info.className.includes('전도사')) {
                     let extraTeachers = [];
                     (allMembersObj[gKey]||[]).forEach(name => {
                         const isPresent = presentSet.has(name);
@@ -386,15 +491,50 @@
                                 <td class="text-sm leading-relaxed">${extraTeachers.join(', ')}</td>
                             </tr>`;
                     }
+                    return; 
+                }
+
+                let studentPresent = []; let studentAbsent = [];
+                let studentCountInClass = 0;
+
+                (allMembersObj[gKey]||[]).forEach(name => {
+                    const isPresent = presentSet.has(name);
+                    if(!teacherSet.has(name)) {
+                        if(isPresent) { studentPresent.push(name); studentCountInClass++; globalStudentPresentCount++; }
+                        else studentAbsent.push(name);
+                    }
+                });
+
+                let teacherHtml = '-';
+                if(info.teacherName) {
+                    const isTPresent = presentSet.has(info.teacherName);
+                    teacherHtml = isTPresent ? `<span class="font-black text-blue-800">${info.teacherName}</span>` : `<span class="font-medium text-slate-400">(${info.teacherName})</span>`;
+                }
+
+                if(studentPresent.length > 0 || studentAbsent.length > 0 || info.teacherName) {
+                    groupRowsHtml += `
+                        <tr>
+                            <td class="font-black text-slate-800 bg-slate-50">${info.className}</td>
+                            <td class="font-black text-blue-700">${studentCountInClass}명</td>
+                            <td class="text-left text-slate-800 font-bold leading-relaxed">${studentPresent.join(', ') || '-'}</td>
+                            <td class="text-left text-red-500 font-medium leading-relaxed">${studentAbsent.join(', ') || '-'}</td>
+                            <td class="text-sm">${teacherHtml}</td>
+                        </tr>`;
                 }
             });
 
-            // 스냅샷 저장
-            db.ref(`attendance/${dateVal}/${DEPT_NAME}/total_snapshot`).set(globalStudentPresentCount);
-
             const visHtml = visitorsNew.map(v=>`${v.name}(${v.reason})`).join(', ') || "없음";
-            const absKeys = Object.keys(absenteeReasons).sort();
-            let absReasonHtml = absKeys.map(name => `[${name}] ${absenteeReasons[name]}`).join(' / ') || "<span class='text-red-400 font-medium'>작성된 결석/특이 사유가 없습니다.</span>";
+            
+            // 🚀 결석 사유 보고서에 조립 (교사는 제외하고 학생만 보고)
+            const absentees = getAbsentees();
+            let absTexts = [];
+            absentees.forEach(name => {
+                if(!name.includes("(교사)")) { 
+                    let r = globalAbsenteeReasons[name];
+                    if(r) absTexts.push(`[${name}] ${r}`);
+                }
+            });
+            let absReasonHtml = absTexts.length > 0 ? absTexts.join(' / ') : "<span class='text-red-400 font-medium'>작성된 학생 결석 사유가 없습니다.</span>";
 
             const html = `
                 <div class="border-b-4 border-blue-900 pb-3 mb-6 flex justify-between items-end">
@@ -420,7 +560,7 @@
                         <div class="border border-slate-200 rounded-lg p-3 bg-slate-50 flex-1">
                             <p class="font-black text-green-700 text-[12px] mb-1">🌱 방문자 및 새친구</p>
                             <p class="font-bold text-slate-800 text-[13px] mb-4">${visHtml}</p>
-                            <p class="font-black text-orange-600 text-[12px] mb-1">📝 특이사항 및 결석사유 요약</p>
+                            <p class="font-black text-orange-600 text-[12px] mb-1">📝 결석사유 요약 (학생)</p>
                             <div class="bg-red-50 text-red-800 p-2 rounded text-[12px] font-bold leading-relaxed">${absReasonHtml}</div>
                         </div>
                     </div>
@@ -454,6 +594,11 @@
             document.getElementById('a4-content').innerHTML = html;
             closeReportCenter(); document.getElementById('main-app').style.display = 'none'; document.getElementById('report-view').style.display = 'block';
             
+            // 🚀 과거 3주 데이터 자동 조회 (학생 기준 카운트)
+            let w1 = await getPastCount(7) ?? Math.max(0, globalStudentPresentCount - 1); 
+            let w2 = await getPastCount(14) ?? Math.max(0, globalStudentPresentCount - 2);
+            let w3 = await getPastCount(21) ?? Math.max(0, globalStudentPresentCount + 1);
+
             setTimeout(() => {
                 scaleReport();
                 const ctx = document.getElementById('trendChart').getContext('2d');
@@ -462,7 +607,7 @@
                     data: {
                         labels: ['3주전', '2주전', '지난주', '이번주'],
                         datasets: [{
-                            data: [globalStudentPresentCount, globalStudentPresentCount, globalStudentPresentCount, globalStudentPresentCount], // 그래프 임시동일화
+                            data: [w3, w2, w1, globalStudentPresentCount], 
                             backgroundColor: ['#cbd5e1', '#cbd5e1', '#cbd5e1', '#4f46e5'],
                             borderRadius: 4, barPercentage: 0.6
                         }]
@@ -483,44 +628,6 @@
             else { page.style.transform = 'none'; container.style.height = 'auto'; }
         }
 
-        window.openAbsenteeModal = function() {
-            const listContainer = document.getElementById('absentee-list-container'); listContainer.innerHTML = '';
-            let absentees = []; 
-            
-            // 🚨 결석한 선생님들도 사유 입력칸에 자동 추가!
-            teacherSet.forEach(tName => {
-                if(!presentSet.has(tName)) absentees.push(tName + " (교사)");
-            });
-
-            // 학생들 추가
-            Object.keys(allMembersObj).forEach(gKey => { 
-                (allMembersObj[gKey]||[]).forEach(name => { 
-                    if(!presentSet.has(name) && !teacherSet.has(name) && !absentees.includes(name)) absentees.push(name); 
-                }); 
-            });
-
-            absentees.forEach(name => {
-                const isTeacher = name.includes("(교사)");
-                const realName = isTeacher ? name.replace(" (교사)", "") : name; // 저장할 땐 원래 이름으로!
-                const hasReason = !!absenteeReasons[realName]; 
-                
-                const btn = document.createElement('button'); 
-                btn.className = `w-full text-left p-3 rounded-lg border-2 mb-2 font-bold text-sm transition-all ${hasReason ? 'border-orange-500 bg-orange-50 text-orange-900' : 'border-slate-200 bg-white text-slate-500'}`;
-                btn.innerHTML = `<div class="flex justify-between"><span>${isTeacher ? '👑 ' : ''}${name}</span><span class="text-xs px-2 py-0.5 rounded-full ${hasReason?'bg-orange-500 text-white':'bg-slate-200'}">${hasReason?'입력됨':'사유 입력'}</span></div>${hasReason ? `<div class="mt-2 text-orange-700 bg-white p-2 border border-orange-200">👉 ${absenteeReasons[realName]}</div>` : ''}`;
-                btn.onclick = () => { 
-                    const reason = prompt(`[${name}] 결석 사유 입력:`, absenteeReasons[realName] || ""); 
-                    if(reason !== null) { 
-                        if(reason.trim()==="") delete absenteeReasons[realName]; 
-                        else absenteeReasons[realName] = reason.trim(); 
-                        openAbsenteeModal(); updateAbsenteeBadge(); 
-                    } 
-                };
-                listContainer.appendChild(btn);
-            });
-            document.getElementById('absentee-modal').style.display = 'flex';
-        }
-        window.closeAbsenteeModal = function() { document.getElementById('absentee-modal').style.display = 'none'; }
-        function updateAbsenteeBadge() { document.getElementById('absentee-count-badge').innerText = `${Object.keys(absenteeReasons).length}명 작성됨`; }
         function checkServerStatus() { document.getElementById('db-status').innerText = `🟢 서버 연동 완료!`; document.getElementById('db-status').className = "text-[11px] font-bold text-green-600 mt-2 text-center"; }
         window.addEventListener('resize', () => { if(document.getElementById('report-view').style.display === 'block') scaleReport(); });
         window.onload = initApp;
