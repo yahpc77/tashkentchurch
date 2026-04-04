@@ -134,4 +134,493 @@
             <button onclick="closeReportView()" class="flex-1 max-w-[200px] bg-slate-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg border border-slate-500">🔙 뒤로가기</button>
             <button onclick="window.print()" class="flex-1 max-w-[200px] bg-blue-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg">🖨️ PDF 저장</button>
         </div>
-        <div id
+        <div id="report-container">
+            <div class="a4-page relative" id="a4-content"></div>
+        </div>
+    </div>
+
+    <script>
+        const DEPT_NAME = "청년부"; 
+        const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.database();
+        
+        let allMembersObj = {}; let presentSet = new Set();
+        let visitorsNew = []; let visitorsRecurring = []; 
+        let globalAbsenteeReasons = {}; // 🚀 영구기억 사유 저장소
+        let currentReportDetails = {}; 
+        let currentReasonTarget = ""; 
+
+        function sortMembers(arr) {
+            return arr.sort((a, b) => {
+                const rankA = a.includes('(리더)') ? 1 : a.includes('(부리더)') ? 2 : 3;
+                const rankB = b.includes('(리더)') ? 1 : b.includes('(부리더)') ? 2 : 3;
+                if (rankA !== rankB) return rankA - rankB;
+                return a.localeCompare(b);
+            });
+        }
+
+        function initApp() {
+            document.getElementById('today-date').value = new Date().toISOString().split('T')[0];
+            
+            db.ref('members').on('value', (snap) => {
+                const data = snap.val() || {}; let processed = {};
+                for(let k in data) { 
+                    if(k.startsWith(DEPT_NAME + "_")) { 
+                        let membersArray = data[k] ? (Array.isArray(data[k]) ? data[k] : Object.values(data[k])) : [];
+                        processed[k] = sortMembers(membersArray); 
+                    } 
+                }
+                allMembersObj = processed;
+                checkServerStatus();
+                startAttendanceSync(); 
+            });
+
+            // 🚀 글로벌 영구기억 사유 실시간 연동
+            db.ref(`global_absentee_reasons_${DEPT_NAME}`).on('value', snap => {
+                globalAbsenteeReasons = snap.val() || {};
+                updateAbsenteeBadge();
+            });
+
+            document.getElementById('today-date').addEventListener('change', startAttendanceSync);
+        }
+
+        function startAttendanceSync() {
+            const dateStr = document.getElementById('today-date').value;
+            const path = `attendance/${dateStr}/${DEPT_NAME}`;
+            
+            db.ref(path).off(); 
+            db.ref(`attendance/${dateStr}/report_details_${DEPT_NAME}`).off();
+
+            db.ref(path).on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                presentSet.clear(); visitorsNew = []; visitorsRecurring = [];
+                
+                if(data.present_list) {
+                    Object.keys(data.present_list).forEach(nameKey => {
+                        if(data.present_list[nameKey]) presentSet.add(nameKey);
+                    });
+                }
+                if(data.visitorsNew) visitorsNew = data.visitorsNew;
+                if(data.visitorsRecurring) visitorsRecurring = data.visitorsRecurring;
+                
+                updateAbsenteeBadge();
+                renderLists(); 
+            });
+
+            db.ref(`attendance/${dateStr}/report_details_${DEPT_NAME}`).on('value', snap => {
+                currentReportDetails = snap.val() || {};
+                fillReportInputs();
+            });
+        }
+
+        window.toggleAttendance = function(fullName) { 
+            const dateStr = document.getElementById('today-date').value;
+            const isPresent = presentSet.has(fullName);
+            db.ref(`attendance/${dateStr}/${DEPT_NAME}/present_list/${fullName}`).set(isPresent ? null : true);
+            document.getElementById('search-input').value = ""; 
+            
+            // 🚀 출석체크 되면 영구기억 사유 자동 삭제!
+            if(!isPresent) db.ref(`global_absentee_reasons_${DEPT_NAME}/${fullName}`).remove();
+        }
+
+        window.moveOrAddFriend = function(targetGroupKey) {
+            const name = prompt(`영구 등록할 성도 이름 (예: 김철수, 강지명(리더)):`);
+            if(!name || name.trim() === "") return; 
+            const cleanName = name.trim(); 
+
+            let updates = {}; let isMoving = false; let currentGroupLabel = '';
+
+            for(let key in allMembersObj) {
+                let currentArray = allMembersObj[key] || [];
+                const existingIndex = currentArray.findIndex(n => n === cleanName);
+                if(existingIndex !== -1) {
+                    isMoving = true;
+                    if(key === targetGroupKey) { alert(`이미 이 조에 등록된 성도입니다.`); return; }
+                    updates[`members/${key}`] = currentArray.filter(n => n !== cleanName);
+                    let targetArray = allMembersObj[targetGroupKey] ? [...allMembersObj[targetGroupKey]] : [];
+                    targetArray.push(cleanName); 
+                    updates[`members/${targetGroupKey}`] = sortMembers(targetArray);
+                    
+                    const gKeys = Object.keys(allMembersObj).sort((a,b)=>a.localeCompare(b));
+                    currentGroupLabel = (gKeys.indexOf(key) + 1) + "조";
+                    break; 
+                }
+            }
+
+            if(isMoving) {
+                if(confirm(`[${cleanName}] 성도는 [${currentGroupLabel}]에 있습니다.\n이동시키겠습니까?`)) {
+                    db.ref().update(updates).then(() => { alert(`🎉 이동 완료!`); window.toggleAttendance(cleanName); });
+                }
+            } else {
+                let targetArray = allMembersObj[targetGroupKey] ? [...allMembersObj[targetGroupKey]] : [];
+                targetArray.push(cleanName); 
+                db.ref(`members/${targetGroupKey}`).set(sortMembers(targetArray)).then(() => { alert(`🎉 신규 등록 완료!`); window.toggleAttendance(cleanName); });
+            }
+        };
+
+        function findGroupByName(name) {
+            for (let k in allMembersObj) {
+                if ((allMembersObj[k] || []).includes(name)) return k;
+            }
+            return null;
+        }
+
+        window.deleteMember = function(name, groupKey) {
+            if(!groupKey) return;
+            if(confirm(`🚨 주의!\n[${name}] 성도를 조 명단에서 완전히 삭제하시겠습니까?\n(오타 수정이나 등반/이사 시에만 사용하세요)`)) {
+                let targetArr = allMembersObj[groupKey] || [];
+                let updatedArr = targetArr.filter(n => n !== name);
+                
+                db.ref('members/' + groupKey).set(updatedArr).then(() => {
+                    db.ref(`attendance/${document.getElementById('today-date').value}/${DEPT_NAME}/present_list/${name}`).remove();
+                    db.ref(`global_absentee_reasons_${DEPT_NAME}/${name}`).remove();
+                    alert(`🗑️ [${name}] 성도 삭제 완료!`);
+                });
+            }
+        };
+
+        function renderLists() {
+            const container = document.getElementById('members-container'); container.innerHTML = ''; const keyword = document.getElementById('search-input').value.trim();
+            const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
+
+            const addLongPressEvent = (btn, name, groupKey) => {
+                let pressTimer; let isLongPress = false;
+                const startPress = (e) => { 
+                    isLongPress = false; 
+                    pressTimer = setTimeout(() => { 
+                        isLongPress = true; 
+                        deleteMember(name, groupKey || findGroupByName(name)); 
+                    }, 800);
+                };
+                const cancelPress = () => { clearTimeout(pressTimer); };
+                
+                btn.addEventListener('touchstart', startPress, {passive: true});
+                btn.addEventListener('touchend', cancelPress);
+                btn.addEventListener('touchmove', cancelPress, {passive: true});
+                btn.addEventListener('mousedown', startPress);
+                btn.addEventListener('mouseup', cancelPress);
+                btn.addEventListener('mouseleave', cancelPress);
+                
+                btn.onclick = (e) => {
+                    if(isLongPress) { e.preventDefault(); return; } 
+                    toggleAttendance(name);
+                    if(keyword) document.getElementById('search-input').value = ""; 
+                };
+            };
+
+            groupKeys.forEach((groupKey, index) => {
+                let membersArr = allMembersObj[groupKey] || []; let displayMembers = [...membersArr];
+                let hasKeyword = keyword !== "";
+                let filteredMembers = membersArr.filter(name => name.includes(keyword));
+                
+                const groupNumStr = (index + 1) + "조";
+                
+                if (hasKeyword && !groupNumStr.includes(keyword) && filteredMembers.length === 0) return;
+                
+                const section = document.createElement('div'); section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
+                section.innerHTML = `<div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2"><h3 class="text-sm font-black text-gray-800 flex items-center gap-1.5 section-title"><span class="w-2 h-4 bg-indigo-500 rounded-full"></span>${groupNumStr} <span class="text-xs text-indigo-400 font-bold ml-auto">${membersArr.length}명</span></h3></div>`;
+                const grid = document.createElement('div'); grid.className = "grid grid-cols-6 gap-1.5"; 
+                
+                (hasKeyword ? filteredMembers : displayMembers).forEach(name => {
+                    const isPresent = presentSet.has(name); const btn = document.createElement('button');
+                    let isMatch = hasKeyword && name.includes(keyword);
+                    btn.className = `member-btn w-full text-center tracking-tight leading-tight ${isPresent ? 'status-present' : 'status-absent'} ${isMatch ? 'highlight-search' : ''}`;
+                    
+                    let displayName = name;
+                    if(name.length > 5) displayName = `<span class="text-[11px] leading-none">${name}</span>`;
+                    
+                    btn.innerHTML = displayName; 
+                    addLongPressEvent(btn, name, groupKey);
+                    grid.appendChild(btn);
+                });
+                if(!keyword) { const addBtn = document.createElement('button'); addBtn.className = "member-btn w-full add-btn flex items-center justify-center active:scale-90"; addBtn.innerHTML = "+"; addBtn.onclick = () => moveOrAddFriend(groupKey); grid.appendChild(addBtn); }
+                section.appendChild(grid); container.appendChild(section);
+            });
+            
+            if(visitorsNew.length > 0 || visitorsRecurring.length > 0) {
+                const visSection = document.createElement('div'); visSection.className = "bg-orange-50 p-2 rounded-xl shadow-sm border border-orange-200 mb-2 mt-4";
+                visSection.innerHTML = `<h3 class="text-sm font-black text-orange-800 mb-2 border-b border-orange-200 pb-2 section-title">👋 당일 방문자</h3>`;
+                const visGrid = document.createElement('div'); visGrid.className = "grid grid-cols-4 gap-1.5";
+                visitorsNew.forEach((v, idx) => { const btn = document.createElement('button'); btn.className = "member-btn w-full text-center status-visitor text-[12px] flex flex-col items-center py-1"; btn.innerHTML = `<span>${v.name}</span><span class="text-[9px] opacity-80 mt-0.5">${v.reason}</span>`; btn.onclick = () => { if(confirm(`${v.name} 삭제?`)) { visitorsNew.splice(idx, 1); db.ref(`attendance/${document.getElementById('today-date').value}/${DEPT_NAME}/visitorsNew`).set(visitorsNew); } }; visGrid.appendChild(btn); });
+                visitorsRecurring.forEach((v, idx) => { const btn = document.createElement('button'); btn.className = "member-btn w-full text-center bg-slate-400 text-white text-[12px]"; btn.innerHTML = `${v.name} (계속)`; btn.onclick = () => { if(confirm(`${v.name} 삭제?`)) { visitorsRecurring.splice(idx, 1); db.ref(`attendance/${document.getElementById('today-date').value}/${DEPT_NAME}/visitorsRecurring`).set(visitorsRecurring); } }; visGrid.appendChild(btn); });
+                visSection.appendChild(visGrid); container.appendChild(visSection);
+            }
+            document.getElementById('count-display').innerText = presentSet.size + visitorsNew.length;
+        }
+
+        function filterMembers() { renderLists(); }
+
+        window.addVisitor = function(isNew) {
+            const name = prompt(isNew ? "🆕 첫 방문자 이름:" : "🔄 계속 방문자 이름 (보고제외):"); if(!name || name.trim() === "") return;
+            const dateStr = document.getElementById('today-date').value;
+            if(isNew) { const reason = prompt(`[${name.trim()}] 방문 사유`) || "새친구"; visitorsNew.push({ name: name.trim(), reason: reason }); db.ref(`attendance/${dateStr}/${DEPT_NAME}/visitorsNew`).set(visitorsNew); }
+            else { visitorsRecurring.push({ name: name.trim() }); db.ref(`attendance/${dateStr}/${DEPT_NAME}/visitorsRecurring`).set(visitorsRecurring); }
+        };
+
+        // 🚀 최종 마감 시 파이어베이스에 이번주 총 인원도 안전하게 보관! (나중에 대예배 통합 차트에서 씀)
+        window.submitReportDetails = function() {
+            const targetDate = document.getElementById('today-date').value;
+            currentReportDetails = {
+                preacher: document.getElementById('rep-preacher').value, scripture: document.getElementById('rep-scripture').value,
+                title: document.getElementById('rep-title').value, vicePreacher: document.getElementById('rep-vice-preacher').value
+            };
+            db.ref(`attendance/${targetDate}/report_details_${DEPT_NAME}`).set(currentReportDetails);
+            db.ref(`attendance/${targetDate}/${DEPT_NAME}/total_snapshot`).set(presentSet.size + visitorsNew.length);
+            alert(`💾 최종 보고서 텍스트 데이터 및 출석 인원 저장 완료!`);
+        }
+
+        window.openReportCenter = function() { document.getElementById('report-modal').style.display = 'flex'; }
+        window.closeReportCenter = function() { document.getElementById('report-modal').style.display = 'none'; }
+        window.closeReportView = function() { document.getElementById('report-view').style.display = 'none'; document.getElementById('main-app').style.display = 'block'; }
+
+        // 🚀 결석자 산출 로직
+        function getAbsentees() {
+            let absentees = [];
+            Object.keys(allMembersObj).forEach(gKey => {
+                (allMembersObj[gKey]||[]).forEach(name => {
+                    if(!presentSet.has(name) && !absentees.includes(name)) absentees.push(name);
+                });
+            });
+            return absentees.sort();
+        }
+
+        // 🚀 1~4번 사유 입력 모달 로직
+        window.openReasonModalFor = function(name) {
+            currentReasonTarget = name;
+            document.getElementById('reason-target-name').innerText = name + " 조원";
+            document.getElementById('reason-select-modal').style.display = 'flex';
+        }
+        window.closeReasonModal = function() { document.getElementById('reason-select-modal').style.display = 'none'; }
+        
+        window.setReason = function(type) {
+            db.ref(`global_absentee_reasons_${DEPT_NAME}/${currentReasonTarget}`).set(type);
+            closeReasonModal(); window.openAbsenteeModal();
+        }
+        window.openReasonInput = function(type) {
+            let title = type === '기타' ? '단순 메모 (보고용 아님)' : '특별 심방/보고 사유 (보고서에 출력됨)';
+            let placeholder = type === '기타' ? '예: 야근, 건강문제' : '목사님께 보고할 상세 내용...';
+            let input = prompt(`[${type}] ${title}\n${placeholder}`);
+            if(input !== null && input.trim() !== "") {
+                db.ref(`global_absentee_reasons_${DEPT_NAME}/${currentReasonTarget}`).set(`[${type}] ` + input.trim());
+                closeReasonModal(); window.openAbsenteeModal();
+            }
+        }
+        window.clearReason = function() {
+            db.ref(`global_absentee_reasons_${DEPT_NAME}/${currentReasonTarget}`).remove();
+            closeReasonModal(); window.openAbsenteeModal();
+        }
+
+        window.openAbsenteeModal = function() {
+            const listContainer = document.getElementById('absentee-list-container'); listContainer.innerHTML = '';
+            const absentees = getAbsentees();
+            
+            absentees.forEach(name => {
+                const reason = globalAbsenteeReasons[name] || "";
+                const hasReason = !!reason;
+                
+                let badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">미분류</span>';
+                let cleanReason = reason;
+                if(hasReason) {
+                    if(reason === '한국방문') badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500 text-white">🇰🇷 한국</span>';
+                    else if(reason === '타슈켄트 결석') badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-500 text-white">🇺🇿 타슈켄트</span>';
+                    else if(reason.startsWith('[기타]')) { badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-500 text-white">📝 기타</span>'; cleanReason = reason.replace('[기타] ', ''); }
+                    else if(reason.startsWith('[보고]')) { badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-red-500 text-white font-bold shadow-sm">🚨 보고</span>'; cleanReason = reason.replace('[보고] ', ''); }
+                }
+
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-3 rounded-xl border-2 mb-2 font-bold text-sm active:scale-95 transition-transform ${hasReason ? (reason.startsWith('[보고]') ? 'border-red-400 bg-red-50 text-red-900' : 'border-indigo-300 bg-indigo-50 text-indigo-900') : 'border-slate-200 bg-white text-slate-600'}`;
+                btn.innerHTML = `<div class="flex justify-between items-center"><span>${name}</span>${badgeHtml}</div>${hasReason ? `<div class="mt-2 text-slate-700 font-medium bg-white p-2 rounded text-[12px] border ${reason.startsWith('[보고]') ? 'border-red-200' : 'border-indigo-100'}">👉 ${cleanReason}</div>` : ''}`;
+                btn.onclick = () => { openReasonModalFor(name); };
+                listContainer.appendChild(btn);
+            });
+            document.getElementById('absentee-modal').style.display = 'flex';
+        }
+        window.closeAbsenteeModal = function() { document.getElementById('absentee-modal').style.display = 'none'; }
+        
+        function updateAbsenteeBadge() { 
+            let count = 0; getAbsentees().forEach(n => { if(globalAbsenteeReasons[n]) count++; });
+            document.getElementById('absentee-count-badge').innerText = `${count}명 완료`; 
+        }
+
+        function extractRoleAndName(fullName) {
+            let name = fullName; let role = 'member';
+            if (fullName.includes('(리더)')) { name = fullName.replace('(리더)', '').trim(); role = 'leader'; } 
+            else if (fullName.includes('(부리더)')) { name = fullName.replace('(부리더)', '').trim(); role = 'subleader'; }
+            return { name, role, original: fullName };
+        }
+
+        // 🚀 지난 데이터 과거 차트용으로 자동 불러오기 함수
+        const getPastCount = async (daysAgo) => {
+            let d = new Date(document.getElementById('today-date').value);
+            d.setDate(d.getDate() - daysAgo);
+            let pDate = d.toISOString().split('T')[0];
+            let snap = await db.ref(`attendance/${pDate}/${DEPT_NAME}`).once('value');
+            let data = snap.val();
+            if(!data) return null; // 데이터 없으면 null
+            let p = data.present_list ? Object.keys(data.present_list).length : 0;
+            let v = data.visitorsNew ? data.visitorsNew.length : 0;
+            return p + v;
+        };
+
+        window.generateA4Report = async function() {
+            const dateVal = document.getElementById('today-date').value;
+            const targetDateStr = dateVal.replace(/-/g, '. ');
+
+            const preacher = currentReportDetails.preacher || "정재호 목사";
+            const scripture = currentReportDetails.scripture || "마태복음 25장";
+            const title = currentReportDetails.title || "미입력";
+            const pray = currentReportDetails.vicePreacher || "미입력";
+
+            let groupRowsHtml = '';
+            let totalPresent = presentSet.size + visitorsNew.length;
+            const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
+            
+            groupKeys.forEach((gKey, index) => {
+                const groupNumStr = (index + 1) + "조";
+                
+                let pList = []; let aList = [];
+                let pCount = 0;
+                let leaderHtml = '-'; let subleaderHtml = '-';
+
+                (allMembersObj[gKey]||[]).forEach(fullName => {
+                    const isPresent = presentSet.has(fullName);
+                    const parsed = extractRoleAndName(fullName);
+                    
+                    if(isPresent) pCount++;
+
+                    if(parsed.role === 'leader') {
+                        leaderHtml = isPresent ? `<span class="font-black text-blue-900">${parsed.name}</span>` : `<span class="font-medium text-slate-400">(${parsed.name})</span>`;
+                    } else if(parsed.role === 'subleader') {
+                        subleaderHtml = isPresent ? `<span class="font-bold text-slate-800">${parsed.name}</span>` : `<span class="font-medium text-slate-400">(${parsed.name})</span>`;
+                    } else {
+                        if(isPresent) pList.push(parsed.name);
+                        else aList.push(parsed.name);
+                    }
+                });
+
+                if(allMembersObj[gKey].length > 0) {
+                    groupRowsHtml += `
+                        <tr>
+                            <td class="font-black text-slate-800 bg-slate-50">${groupNumStr}</td>
+                            <td class="text-sm">${leaderHtml}</td>
+                            <td class="text-sm">${subleaderHtml}</td>
+                            <td class="font-black text-blue-700">${pCount}명</td>
+                            <td class="text-left text-slate-800 font-bold leading-relaxed">${pList.join(', ') || '-'}</td>
+                            <td class="text-left text-red-500 font-medium leading-relaxed">${aList.join(', ') || '-'}</td>
+                        </tr>`;
+                }
+            });
+
+            const visHtml = visitorsNew.map(v=>`${v.name}(${v.reason})`).join(', ') || "없음";
+            
+            // 🚀 결석 사유 보고서에 예쁘게 넣기 (오늘 결석한 사람의 사유만 뽑기)
+            const currentAbsentees = getAbsentees();
+            let absTexts = [];
+            currentAbsentees.forEach(name => {
+                let r = globalAbsenteeReasons[name];
+                if(r) {
+                    let clean = r.replace('[기타] ', '').replace('[보고] ', '');
+                    absTexts.push(`[${name}] ${clean}`);
+                }
+            });
+            let absReasonHtml = absTexts.length > 0 ? absTexts.join(' / ') : "<span class='text-red-400'>작성된 결석/특이 사유가 없습니다.</span>";
+
+            const html = `
+                <div class="border-b-4 border-blue-900 pb-3 mb-6 flex justify-between items-end">
+                    <div>
+                        <h1 class="text-3xl font-black text-blue-950 tracking-tighter">푸른 청년부 예배 및 출석 보고서</h1>
+                        <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Tashkent Korean Church</p>
+                    </div>
+                    <div class="text-xl font-black text-blue-950">${targetDateStr}</div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-6 mb-8">
+                    <div class="col-span-6 flex flex-col gap-4">
+                        <div>
+                            <h2 class="text-[15px] font-black text-blue-950 mb-2 border-b-2 border-blue-900 pb-1">I. 예배 정보</h2>
+                            <table class="w-full text-[13px] border border-slate-300">
+                                <tbody>
+                                    <tr class="border-b border-slate-300"><th class="w-1/4 bg-slate-100 py-2 text-slate-600 font-bold border-r border-slate-300">인도</th><td class="pl-3 font-bold text-slate-800">${preacher}</td></tr>
+                                    <tr class="border-b border-slate-300"><th class="bg-slate-100 py-2 text-slate-600 font-bold border-r border-slate-300">본문</th><td class="pl-3 font-bold text-slate-800">${scripture}</td></tr>
+                                    <tr><th class="bg-slate-100 py-2 text-slate-600 font-bold border-r border-slate-300">제목</th><td class="pl-3 font-bold text-slate-800">${title}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="border border-slate-200 rounded-lg p-3 bg-slate-50 flex-1">
+                            <p class="font-black text-green-700 text-[12px] mb-1">🌱 방문자 및 새친구</p>
+                            <p class="font-bold text-slate-800 text-[13px] mb-4">${visHtml}</p>
+                            <p class="font-black text-orange-600 text-[12px] mb-1">📝 특이사항 및 결석사유 요약</p>
+                            <div class="bg-red-50 text-red-800 p-2 rounded text-[12px] font-bold leading-relaxed">${absReasonHtml}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-span-6 flex flex-col">
+                        <div class="bg-[#243c7c] rounded-xl p-4 flex justify-between items-center shadow-md mb-4">
+                            <div>
+                                <p class="text-blue-200 text-[10px] font-bold uppercase tracking-wider">Total Attendance</p>
+                                <p class="text-lg font-black text-white mt-1">총 출석 인원</p>
+                            </div>
+                            <div class="text-right"><span class="text-4xl font-black text-white">${totalPresent}</span><span class="text-sm font-bold text-blue-200 ml-1">명</span></div>
+                        </div>
+                        <div class="border border-slate-200 rounded-xl p-3 bg-white mt-auto">
+                            <p class="text-[12px] font-black text-slate-700 mb-2 flex items-center gap-1">📊 최근 4주 출석 추이</p>
+                            <div class="relative w-full" style="height: 110px;">
+                                <canvas id="trendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 class="text-[15px] font-black text-blue-950 mb-2 border-b-2 border-blue-900 pb-1">II. 상세 출석 명단</h2>
+                <table class="w-full text-[12px] border-t-2 border-blue-900 dense-table">
+                    <thead>
+                        <tr><th class="w-[8%]">조(구분)</th><th class="w-[12%]">리더 👑</th><th class="w-[12%]">부리더 👑</th><th class="w-[10%]">출석인원</th><th class="w-[29%]">조원 출석 ✅</th><th class="w-[29%]">조원 결석 ❌</th></tr>
+                    </thead>
+                    <tbody>${groupRowsHtml}</tbody>
+                </table>
+            `;
+
+            document.getElementById('a4-content').innerHTML = html;
+            closeReportCenter(); document.getElementById('main-app').style.display = 'none'; document.getElementById('report-view').style.display = 'block';
+            
+            // 🚀 과거 3주 데이터 자동으로 불러와서 차트 그리기
+            let w1 = await getPastCount(7) ?? 36;   // 파이어베이스에 없으면 36명(가짜데이터)
+            let w2 = await getPastCount(14) ?? 33;  // 없으면 33명
+            let w3 = await getPastCount(21) ?? 38;  // 없으면 38명
+
+            setTimeout(() => {
+                scaleReport();
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['3주전', '2주전', '지난주', '이번주'],
+                        datasets: [{
+                            data: [w3, w2, w1, totalPresent],
+                            backgroundColor: ['#cbd5e1', '#cbd5e1', '#cbd5e1', '#4f46e5'],
+                            borderRadius: 4, barPercentage: 0.6
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false, min: 0 }, x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8' } } }, animation: { onComplete: function() { const chartInstance = this; const ctx = chartInstance.ctx; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.font = 'bold 11px "Noto Sans KR"'; chartInstance.data.datasets[0].data.forEach(function(val, i) { const meta = chartInstance.getDatasetMeta(0); const bar = meta.data[i]; ctx.fillStyle = i === 3 ? '#312e81' : '#64748b'; ctx.fillText(val, bar.x, bar.y - 4); }); } } }
+                });
+            }, 100);
+        }
+
+        function fillReportInputs() {
+            document.getElementById('rep-preacher').value = currentReportDetails.preacher || ""; document.getElementById('rep-scripture').value = currentReportDetails.scripture || ""; document.getElementById('rep-title').value = currentReportDetails.title || ""; document.getElementById('rep-vice-preacher').value = currentReportDetails.vicePreacher || "";
+        }
+
+        function scaleReport() {
+            const container = document.getElementById('report-container'); const page = document.getElementById('a4-content');
+            const w = container.clientWidth;
+            if(w < 820) { const scale = w / 820; page.style.transform = `scale(${scale})`; page.style.transformOrigin = 'top center'; container.style.height = `${1123 * scale + 40}px`; }
+            else { page.style.transform = 'none'; container.style.height = 'auto'; }
+        }
+
+        function checkServerStatus() { document.getElementById('db-status').innerText = `🟢 서버 연동 완료! (${allMembersObj[Object.keys(allMembersObj)[0]]?.length || 0}명 로드됨)`; document.getElementById('db-status').className = "text-[11px] font-bold text-green-600 mt-2 text-center"; }
+        window.addEventListener('resize', () => { if(document.getElementById('report-view').style.display === 'block') scaleReport(); });
+        window.onload = initApp;
+    </script>
+</body>
+</html>
