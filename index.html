@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>⛪ 대예배 출석부 V7.5 (찐최종판)</title>
+    <title>⛪ 대예배 출석부 V7.6 (폼생폼사판)</title>
     
     <link rel="manifest" href="manifest.json?v=999">
     <link rel="apple-touch-icon" href="logo.png?v=999">
@@ -16,9 +16,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; user-select: none; }
         
-        .member-btn { transition: transform 0.1s ease; border-radius: 0.5rem; padding-top: 0.75rem; padding-bottom: 0.75rem; font-size: 15px; font-weight: 900; letter-spacing: -0.5px; }
+        .member-btn { transition: transform 0.1s ease; border-radius: 0.5rem; padding-top: 0.75rem; padding-bottom: 0.75rem; font-size: 15px; font-weight: 900; letter-spacing: -0.5px; user-select: none; -webkit-user-select: none; }
         .member-btn:active { transform: scale(0.92); }
         .status-absent { background-color: #ffffff; color: #475569; border: 1.5px solid #cbd5e1; }
         .status-present { background-color: #2563eb; color: white; border: 1.5px solid #1e3a8a; box-shadow: 0 4px 6px rgba(37,99,235,0.3); }
@@ -60,7 +60,7 @@
         <!-- 상단 헤더 -->
         <div class="bg-white shadow-sm px-3 py-3 border-b-4 border-blue-700 sticky top-0 z-30">
             <div class="flex justify-between items-center mb-3">
-                <h1 class="text-lg font-black text-blue-900 tracking-tight section-title">⛪ 대예배 출석부 V7.5</h1>
+                <h1 class="text-lg font-black text-blue-900 tracking-tight section-title">⛪ 대예배 출석부 V7.6</h1>
                 <input type="date" id="today-date" class="text-sm font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded border border-gray-300 outline-none">
             </div>
             
@@ -91,7 +91,6 @@
 
     <!-- 방문자 모달 -->
     <div id="visitor-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-        <!-- ... 기존 방문자 모달 동일 ... -->
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
             <h2 class="text-xl font-black text-orange-700 mb-4">👋 방문자 추가</h2>
             <input type="text" id="vis-name" placeholder="이름 입력" class="w-full border-2 border-orange-300 rounded-lg p-3 text-lg font-bold mb-3 outline-none focus:border-orange-500">
@@ -144,7 +143,7 @@
         </div>
     </div>
 
-    <!-- 🚀 1,2,3,4번 사유 선택 팝업 (새로 추가됨!) -->
+    <!-- 🚀 1,2,3,4번 사유 선택 팝업 -->
     <div id="reason-select-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] flex justify-center items-end p-0 sm:items-center sm:p-4">
         <div class="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl pb-10 sm:pb-6 transform transition-transform">
             <div class="flex justify-between items-center mb-4">
@@ -187,7 +186,7 @@
         let globalAbsenteeReasons = {}; 
         let chartInstance = null;
         let todaySnapshotTotal = 0;
-        let currentReasonTarget = ""; // 팝업용 변수
+        let currentReasonTarget = "";
 
         const displayGroups1 = [{ key: '1부_직분자', label: '1부 직분자' }, { key: '1부_등록교인', label: '1부 등록교인' }, { key: '청년부', label: '청년부' }, { key: '미등록교인', label: '미등록 교인' }, { key: '미분류_교인', label: '미분류 교인' }];
         const displayGroups2 = [{ key: '2부_직분자', label: '2부 직분자' }, { key: '2부_등록교인', label: '2부 등록교인' }, { key: '청년부', label: '청년부' }, { key: '미등록교인', label: '미등록 교인' }, { key: '미분류_교인', label: '미분류 교인' }];
@@ -261,7 +260,32 @@
             let targetArr = allMembersData[targetGroupKey] ? [...allMembersData[targetGroupKey]] : [];
             if(!targetArr.includes(cleanName)) { targetArr.push(cleanName); targetArr.sort(); }
             updates['members/' + targetGroupKey] = targetArr;
-            db.ref().update(updates).then(() => { toggleAttendance(cleanName); alert(`🎉 [${cleanName}] 님 영구 이사 완료!`); document.getElementById('search-input').value = ""; });
+            db.ref().update(updates).then(() => { toggleAttendance(cleanName); alert(`🎉 [${cleanName}] 님 영구 등록 완료!`); document.getElementById('search-input').value = ""; });
+        };
+
+        // 🚀 이름 찾아서 소속 그룹 반환 (길게 누르기 삭제용)
+        function findGroupByName(name) {
+            for (let k in allMembersData) {
+                if ((allMembersData[k] || []).includes(name)) return k;
+            }
+            return null;
+        }
+
+        // 🚀 꾹~ 눌러서 삭제하는 핵심 로직!
+        window.deleteMember = function(name, groupKey) {
+            if(!groupKey) return;
+            if(confirm(`🚨 주의!\n[${name}] 성도를 명단에서 완전히 삭제하시겠습니까?\n(오타를 지우거나 교회를 떠나신 분만 삭제하세요)`)) {
+                let targetArr = allMembersData[groupKey] || [];
+                let updatedArr = targetArr.filter(n => n !== name);
+                
+                db.ref('members/' + groupKey).set(updatedArr).then(() => {
+                    // 출석 기록, 결석 사유 등 잔여 데이터도 싹 청소
+                    db.ref(`attendance/${document.getElementById('today-date').value}/대예배/1부/present/${name}`).remove();
+                    db.ref(`attendance/${document.getElementById('today-date').value}/대예배/2부/present/${name}`).remove();
+                    db.ref(`global_absentee_reasons/${name}`).remove();
+                    alert(`🗑️ [${name}] 성도 명단 삭제 완료!`);
+                });
+            }
         };
 
         function renderLists() {
@@ -269,6 +293,32 @@
             const keyword = document.getElementById('search-input').value.trim();
             const activeGroups = currentMode === 1 ? displayGroups1 : displayGroups2;
             let currentSet = currentMode === 1 ? presentSet1 : presentSet2;
+
+            // 🚀 길게 누르기(Long Press) 이벤트 달아주는 함수
+            const addLongPressEvent = (btn, name, groupKey) => {
+                let pressTimer; let isLongPress = false;
+                const startPress = (e) => { 
+                    isLongPress = false; 
+                    pressTimer = setTimeout(() => { 
+                        isLongPress = true; 
+                        deleteMember(name, groupKey || findGroupByName(name)); 
+                    }, 800); // 0.8초간 누르면 삭제!
+                };
+                const cancelPress = () => { clearTimeout(pressTimer); };
+                
+                btn.addEventListener('touchstart', startPress, {passive: true});
+                btn.addEventListener('touchend', cancelPress);
+                btn.addEventListener('touchmove', cancelPress, {passive: true});
+                btn.addEventListener('mousedown', startPress);
+                btn.addEventListener('mouseup', cancelPress);
+                btn.addEventListener('mouseleave', cancelPress);
+                
+                btn.onclick = (e) => {
+                    if(isLongPress) { e.preventDefault(); return; } // 길게 눌렀으면 출석체크 무시!
+                    toggleAttendance(name);
+                    if(keyword) document.getElementById('search-input').value = ""; 
+                };
+            };
 
             if (keyword) {
                 const searchedMembers = allMembersFlatList.filter(m => m.includes(keyword));
@@ -279,7 +329,8 @@
                     searchedMembers.forEach(name => {
                         const isPresent = currentSet.has(name); const btn = document.createElement('button');
                         btn.className = `member-btn w-full text-center tracking-tight leading-tight ${isPresent ? 'status-present' : 'status-absent'} highlight-search`;
-                        btn.innerHTML = name; btn.onclick = () => { toggleAttendance(name); document.getElementById('search-input').value = ""; };
+                        btn.innerHTML = name; 
+                        addLongPressEvent(btn, name, null); // 통합검색용 이벤트 부착
                         grid.appendChild(btn);
                     });
                     section.appendChild(grid); container.appendChild(section);
@@ -296,7 +347,8 @@
                 membersArr.forEach(name => {
                     const isPresent = currentSet.has(name); const btn = document.createElement('button');
                     btn.className = `member-btn w-full text-center tracking-tight leading-tight ${isPresent ? 'status-present' : 'status-absent'} ${keyword && name.includes(keyword) ? 'highlight-search' : ''}`;
-                    btn.innerHTML = name; btn.onclick = () => toggleAttendance(name);
+                    btn.innerHTML = name; 
+                    addLongPressEvent(btn, name, group.key); // 부서별 명단 이벤트 부착
                     grid.appendChild(btn);
                 });
                 if(!keyword) { const addBtn = document.createElement('button'); addBtn.className = "member-btn w-full add-btn flex items-center justify-center active:scale-90"; addBtn.innerHTML = "+"; addBtn.onclick = () => moveOrAddMember(group.key, group.label); grid.appendChild(addBtn); }
@@ -355,7 +407,6 @@
             return absentees.sort();
         }
 
-        // 🚀 사유 입력 로직 (1,2,3,4번 전용)
         window.openReasonModalFor = function(name) {
             currentReasonTarget = name;
             document.getElementById('reason-target-name').innerText = name + " 성도";
@@ -426,7 +477,6 @@
             let html = "";
 
             if (type === 1) {
-                // 📊 1. 예배 종합 보고서
                 const snap = await db.ref('attendance/' + document.getElementById('today-date').value).once('value');
                 const todayData = snap.val() || {};
                 const yTotal = todayData['청년부']?.total_snapshot || 0; const mTotal = todayData['중고등부']?.total_snapshot || 0; const eTotal = todayData['유초등부']?.total_snapshot || 0; const kTotal = todayData['유치부']?.total_snapshot || 0;
@@ -489,7 +539,6 @@
                     </div>
                 </div>`;
             } else if (type === 2) {
-                // ✅ 2. 대예배 상세
                 const getPList = (groupKeys, currentSet) => {
                     let list = []; groupKeys.forEach(key => { (allMembersData[key]||[]).forEach(n => { if(currentSet.has(n)) list.push(n); }); });
                     return list.sort().join(' ');
@@ -501,7 +550,6 @@
                 const p1_youth = getPList(['청년부'], presentSet1); const p2_youth = getPList(['청년부'], presentSet2);
                 const v1_str = v1.map(v=>`${v.name}(${v.isNew ? v.reason : '방문'})`).join(', ') || ''; const v2_str = v2.map(v=>`${v.name}(${v.isNew ? v.reason : '방문'})`).join(', ') || '';
                 
-                // 🚀 결석자 그룹화 로직 (1,2,3,4번 자동 파싱)
                 const absentees = getAdultAbsentees();
                 let koreaList = [], tashList = [], otherList = [];
                 absentees.forEach(n => {
@@ -540,7 +588,6 @@
                     </tbody>
                 </table>`;
             } else if (type === 3) {
-                // 🌐 3. 전교인 통합 출석부 (타 부서 이름 파싱 로직 강화!)
                 html = `
                 <div class="flex justify-between items-end border-b-4 tkc-blue-border pb-2 mb-4">
                     <div><h1 class="text-3xl font-black tkc-blue tracking-tighter">전교인 통합 출석 명단</h1></div>
@@ -569,7 +616,6 @@
                         } else {
                             if(dataAll[dept]) { 
                                 count = dataAll[dept].total_snapshot || 0;
-                                // 🚀 형의 걱정 해결: 다른 부서가 present 배열을 저장했다면 이름을 긁어옴!
                                 if(dataAll[dept].present) pNames = Object.keys(dataAll[dept].present);
                                 else if(count > 0) pNames = ["*장부 참조(명단미제출)"];
                                 else pNames = ["-"];
@@ -600,11 +646,9 @@
                     scaleReport(); 
                 }, 200);
             } else if (type === 4) {
-                // 🚨 4. 특별 사유 및 심방 보고서 (4번 항목만 필터링!)
                 const absentees = getAdultAbsentees();
                 let tbody = absentees.map(name => {
                     const r = globalAbsenteeReasons[name];
-                    // '4. 특별보고'로 저장된 항목만 골라서 출력!
                     if(r && r.startsWith('[보고]')) {
                         const cleanReason = r.replace('[보고]', '').trim();
                         return `<tr class="border-b border-slate-300"><td class="py-4 px-4 bg-red-50 border-r border-slate-300 w-32 text-center font-black text-red-900 text-base">${name}</td><td class="py-4 px-4 leading-relaxed font-bold text-slate-800">${cleanReason}</td></tr>`;
