@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>⛪ 대예배 출석부 V7 (찐최종판)</title>
+    <title>⛪ 대예배 출석부 V7.5 (찐최종판)</title>
     
- <!-- 🚀 정석 PWA 연동 코드 (에러 확률 0%) -->
     <link rel="manifest" href="manifest.json?v=999">
     <link rel="apple-touch-icon" href="logo.png?v=999">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -36,7 +35,7 @@
         .highlight-search { animation: pulse-border 1.2s infinite; background-color: #fef08a !important; color: #b45309 !important; border: 2.5px solid #ea580c !important; transform: scale(1.05) !important; z-index: 10 !important; }
         @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(234, 88, 12, 0); } 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); } }
         
-        #report-modal, #absentee-modal, #visitor-modal, #report-view { display: none; }
+        #report-modal, #absentee-modal, #visitor-modal, #report-view, #reason-select-modal { display: none; }
         
         #report-container { width: 100%; display: flex; justify-content: center; overflow-x: hidden; }
         .a4-page { width: 794px !important; min-width: 794px !important; max-width: 794px !important; min-height: 1123px; background: white; padding: 40px 50px; box-sizing: border-box; box-shadow: 0 10px 20px rgba(0,0,0,0.2); margin: 0 auto; transform-origin: top center; }
@@ -48,7 +47,7 @@
         
         @media print {
             body { background-color: white; margin: 0; padding: 0; }
-            #main-app, #report-modal, #absentee-modal, #visitor-modal, .no-print { display: none !important; }
+            #main-app, #report-modal, #absentee-modal, #visitor-modal, #reason-select-modal, .no-print { display: none !important; }
             #report-view { display: block !important; padding: 0; background: white; }
             #report-container { height: auto !important; }
             .a4-page { box-shadow: none; width: 100% !important; max-width: 100% !important; padding: 10mm; transform: none !important; margin: 0 !important; }
@@ -58,9 +57,10 @@
 <body class="pb-28 text-slate-800">
 
     <div id="main-app">
+        <!-- 상단 헤더 -->
         <div class="bg-white shadow-sm px-3 py-3 border-b-4 border-blue-700 sticky top-0 z-30">
             <div class="flex justify-between items-center mb-3">
-                <h1 class="text-lg font-black text-blue-900 tracking-tight section-title">⛪ 대예배 출석부 V7</h1>
+                <h1 class="text-lg font-black text-blue-900 tracking-tight section-title">⛪ 대예배 출석부 V7.5</h1>
                 <input type="date" id="today-date" class="text-sm font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded border border-gray-300 outline-none">
             </div>
             
@@ -70,13 +70,14 @@
             </div>
 
             <div>
-                <input type="text" id="search-input" onkeyup="filterMembers()" class="w-full border-2 border-blue-400 rounded-xl p-3 text-lg font-black shadow-sm focus:outline-none focus:border-blue-600 text-center text-blue-900 placeholder-blue-300" placeholder="🔍 전교인 통합 검색 (1회성 출석)">
+                <input type="text" id="search-input" onkeyup="filterMembers()" class="w-full border-2 border-blue-400 rounded-xl p-3 text-lg font-black shadow-sm focus:outline-none focus:border-blue-600 text-center text-blue-900 placeholder-blue-300" placeholder="🔍 전교인 통합 검색">
             </div>
             <p id="db-status" class="text-[11px] font-bold text-orange-500 mt-2 text-center">🟡 시스템 가동 준비 중...</p>
         </div>
 
         <div id="members-container" class="p-2 space-y-3 bg-slate-50"></div>
 
+        <!-- 하단 바 -->
         <div class="fixed bottom-0 left-0 w-full bg-white border-t-2 border-slate-200 p-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)] z-40 flex justify-between items-center shrink-0 pb-6">
             <div class="pl-2 leading-none flex-1">
                 <p class="text-xs font-bold text-gray-500 mb-1"><span id="current-mode-label">1부</span> 출석현황</p>
@@ -88,18 +89,17 @@
         </div>
     </div>
 
+    <!-- 방문자 모달 -->
     <div id="visitor-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+        <!-- ... 기존 방문자 모달 동일 ... -->
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
             <h2 class="text-xl font-black text-orange-700 mb-4">👋 방문자 추가</h2>
             <input type="text" id="vis-name" placeholder="이름 입력" class="w-full border-2 border-orange-300 rounded-lg p-3 text-lg font-bold mb-3 outline-none focus:border-orange-500">
-            
             <label class="flex items-center gap-2 bg-orange-50 p-3 rounded-lg border border-orange-200 mb-3 cursor-pointer">
                 <input type="checkbox" id="vis-isnew" class="w-5 h-5 accent-orange-600" checked onchange="document.getElementById('vis-reason').style.display = this.checked ? 'block' : 'none'">
                 <span class="font-bold text-orange-900 text-sm">🆕 오늘 처음 오신 새가족입니까?</span>
             </label>
-            
             <input type="text" id="vis-reason" placeholder="방문 사유 (예: 출장, 친지 방문)" class="w-full border border-slate-300 rounded-lg p-3 text-sm font-bold mb-5 outline-none">
-            
             <div class="flex gap-2">
                 <button onclick="document.getElementById('visitor-modal').style.display='none'" class="flex-1 bg-slate-200 text-slate-700 py-3 rounded-xl font-black active:scale-95">취소</button>
                 <button onclick="saveVisitor()" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95">등록하기</button>
@@ -107,6 +107,7 @@
         </div>
     </div>
 
+    <!-- 보고서 센터 모달 -->
     <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl border-t-8 border-indigo-600 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-black text-indigo-900 tracking-tight">🗂️ 보고서 센터</h2><button onclick="closeReportCenter()" class="text-gray-400 font-bold text-xl">&times;</button></div>
@@ -118,30 +119,50 @@
                 <textarea id="rep-note" placeholder="특이사항 요약..." class="w-full border border-slate-300 rounded p-2 text-sm font-bold h-16 outline-none resize-none"></textarea>
             </div>
             
-            <button onclick="openAbsenteeModal()" class="w-full bg-orange-100 text-orange-700 border border-orange-300 py-3 rounded-xl font-black text-sm mb-6 active:scale-95 flex justify-between px-4 items-center">
-                <span>✍️ 결석 사유 관리 (영구저장)</span><span id="absentee-count-badge" class="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">0명</span>
+            <button onclick="openAbsenteeModal()" class="w-full bg-orange-100 text-orange-700 border border-orange-300 py-3 rounded-xl font-black text-sm mb-6 active:scale-95 flex justify-between px-4 items-center shadow-sm">
+                <span>✍️ 장년부 결석자 분류 (1~4번)</span><span id="absentee-count-badge" class="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">0명</span>
             </button>
             
             <div class="space-y-2">
                 <button onclick="generateReport(1)" class="w-full bg-blue-700 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">1. 📊 예배 종합 보고서 (대시보드)</button>
                 <button onclick="generateReport(2)" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">2. ✅ 대예배 상세 출석부 (1부/2부)</button>
                 <button onclick="generateReport(3)" class="w-full bg-teal-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">3. 🌐 전교인 통합 출석부 (전체 부서)</button>
-                <button onclick="generateReport(4)" class="w-full bg-red-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">4. 🏥 결석자 사유 및 심방 보고서</button>
+                <button onclick="generateReport(4)" class="w-full bg-red-600 text-white py-3 rounded-xl font-black text-sm shadow active:scale-95 text-left px-4">4. 🚨 특별 사유 및 심방 보고서</button>
             </div>
         </div>
     </div>
 
+    <!-- 결석자 관리 메인 모달 -->
     <div id="absentee-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl p-5 shadow-2xl flex flex-col h-[80vh]">
             <div class="flex justify-between items-center mb-3">
                 <h2 class="text-lg font-black text-orange-700">✍️ 결석자 사유 (영구기억)</h2>
                 <button onclick="closeAbsenteeModal()" class="text-gray-500 font-bold bg-gray-100 px-3 py-1 rounded-lg text-sm">닫기</button>
             </div>
-            <p class="text-[11px] text-slate-500 mb-2 leading-tight">장년부 결석자만 표시됩니다. 여기서 입력한 사유는 출석하기 전까지 다음 주에도 계속 유지됩니다.</p>
+            <p class="text-[11px] text-slate-500 mb-2 leading-tight">이름을 클릭하여 1~4번 사유를 분류하세요.<br>※ '4.특별보고' 작성자만 마지막 보고서에 출력됩니다.</p>
             <div id="absentee-list-container" class="overflow-y-auto flex-1 space-y-2 bg-slate-50 p-2 rounded-lg border border-slate-200"></div>
         </div>
     </div>
 
+    <!-- 🚀 1,2,3,4번 사유 선택 팝업 (새로 추가됨!) -->
+    <div id="reason-select-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] flex justify-center items-end p-0 sm:items-center sm:p-4">
+        <div class="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl pb-10 sm:pb-6 transform transition-transform">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-black text-indigo-900" id="reason-target-name">홍길동</h2>
+                <button onclick="closeReasonModal()" class="bg-gray-100 text-gray-500 px-3 py-1 rounded-lg font-bold text-sm">닫기</button>
+            </div>
+            <p class="text-xs text-gray-500 font-bold mb-4">해당 성도의 결석 사유를 분류해주세요.</p>
+            <div class="space-y-2">
+                <button onclick="setReason('한국방문')" class="w-full bg-blue-50 border border-blue-200 text-blue-800 py-3 rounded-xl font-black text-left px-4 flex justify-between active:scale-95"><span>1. 🇰🇷 한국 방문</span><span class="text-xs text-blue-500 font-normal mt-0.5">상태 고정</span></button>
+                <button onclick="setReason('타슈켄트 결석')" class="w-full bg-teal-50 border border-teal-200 text-teal-800 py-3 rounded-xl font-black text-left px-4 flex justify-between active:scale-95"><span>2. 🇺🇿 타슈켄트 결석</span><span class="text-xs text-teal-500 font-normal mt-0.5">상태 고정</span></button>
+                <button onclick="openReasonInput('기타')" class="w-full bg-slate-50 border border-slate-300 text-slate-700 py-3 rounded-xl font-black text-left px-4 flex justify-between active:scale-95"><span>3. 📝 기타 사유</span><span class="text-xs text-slate-400 font-normal mt-0.5">단순 메모</span></button>
+                <button onclick="openReasonInput('보고')" class="w-full bg-red-50 border border-red-200 text-red-700 py-3 rounded-xl font-black text-left px-4 flex justify-between active:scale-95"><span>4. 🚨 특별 보고</span><span class="text-xs text-red-500 font-bold mt-0.5">보고서 출력</span></button>
+            </div>
+            <button onclick="clearReason()" class="w-full mt-4 bg-gray-200 text-gray-600 py-3 rounded-xl font-black text-sm active:scale-95">🗑️ 기존 분류 지우기 (초기화)</button>
+        </div>
+    </div>
+
+    <!-- 인쇄용 뷰 -->
     <div id="report-view" class="bg-gray-200 min-h-screen py-8 w-full overflow-y-auto overflow-x-hidden">
         <div class="text-center mb-6 no-print flex gap-3 justify-center w-full px-4">
             <button onclick="closeReportView()" class="flex-1 max-w-[200px] bg-slate-700 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 text-lg">🔙 뒤로가기</button>
@@ -153,9 +174,7 @@
     </div>
 
     <script>
-        // 과거 차트용 데이터 (임시)
         const historyData = { '1부': [52, 50, 59], '2부': [114, 96, 94], '청년부': [38, 33, 36], '중고등부': [59, 53, 55], '유초등부': [32, 30, 29], '유치부': [4, 3, 4] };
-
         const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.database();
@@ -163,17 +182,15 @@
         let currentMode = 1; 
         let presentSet1 = new Set(); let presentSet2 = new Set(); 
         let allMembersData = {}; 
-        let allMembersFlatList = []; // 통합 검색용 전체 명단
+        let allMembersFlatList = []; 
         let visitors = []; 
-        let globalAbsenteeReasons = {}; // 🚨 영구 기억 사유
+        let globalAbsenteeReasons = {}; 
         let chartInstance = null;
         let todaySnapshotTotal = 0;
+        let currentReasonTarget = ""; // 팝업용 변수
 
-        // 화면에 보여줄 방 목록 (청년부 양쪽에 다 나옴!)
         const displayGroups1 = [{ key: '1부_직분자', label: '1부 직분자' }, { key: '1부_등록교인', label: '1부 등록교인' }, { key: '청년부', label: '청년부' }, { key: '미등록교인', label: '미등록 교인' }, { key: '미분류_교인', label: '미분류 교인' }];
         const displayGroups2 = [{ key: '2부_직분자', label: '2부 직분자' }, { key: '2부_등록교인', label: '2부 등록교인' }, { key: '청년부', label: '청년부' }, { key: '미등록교인', label: '미등록 교인' }, { key: '미분류_교인', label: '미분류 교인' }];
-
-        // 🚨 장년부 결석자 산출용 방 (주일학교/청년부 원천 제외)
         const adultGroupsForAbsentees = ['1부_직분자', '1부_등록교인', '2부_직분자', '2부_등록교인', '미등록교인', '미분류_교인'];
 
         function initApp() {
@@ -181,20 +198,18 @@
             let savedMode = localStorage.getItem('tkc_dae_mode');
             if(savedMode) currentMode = parseInt(savedMode);
 
-            // 1. 전체 교인 명단 실시간 연동 (CCTV)
             db.ref('members').on('value', (snap) => {
                 const data = snap.val() || {}; let processed = {}; allMembersFlatList = [];
                 for(let k in data) { 
                     processed[k] = data[k] ? (Array.isArray(data[k]) ? [...data[k]] : Object.values(data[k])) : []; 
-                    allMembersFlatList.push(...processed[k]); // 검색용 통합
+                    allMembersFlatList.push(...processed[k]); 
                 }
                 allMembersData = processed;
-                allMembersFlatList = [...new Set(allMembersFlatList)]; // 중복 제거
+                allMembersFlatList = [...new Set(allMembersFlatList)]; 
                 document.getElementById('db-status').innerHTML = "🟢 실시간 서버 연동 완료!"; document.getElementById('db-status').className = "text-[11px] font-bold text-green-600 mt-2 text-center";
                 setMode(currentMode);
             });
 
-            // 2. 영구 사유 실시간 연동
             db.ref('global_absentee_reasons').on('value', snap => {
                 globalAbsenteeReasons = snap.val() || {};
                 updateAbsenteeBadge();
@@ -213,10 +228,9 @@
             renderLists();
         }
 
-        // 3. 오늘 출석 실시간 연동 (CCTV)
         function loadAttendanceData() {
             const dateStr = document.getElementById('today-date').value;
-            db.ref('attendance/' + dateStr + '/대예배').off(); // 기존 끄기
+            db.ref('attendance/' + dateStr + '/대예배').off(); 
             
             db.ref('attendance/' + dateStr + '/대예배').on('value', (snapshot) => {
                 const data = snapshot.val() || {};
@@ -230,18 +244,15 @@
             });
         }
 
-        // 🚨 출석 껐다 켜기 (안전한 개별 업데이트)
         window.toggleAttendance = function(name) {
             const dateStr = document.getElementById('today-date').value;
             const currentSet = currentMode === 1 ? presentSet1 : presentSet2;
             const isPresent = currentSet.has(name);
             db.ref(`attendance/${dateStr}/대예배/${currentMode}부/present/${name}`).set(isPresent ? null : true);
             
-            // 파란불 켜지면 결석 사유 영구 삭제!
             if(!isPresent) db.ref(`global_absentee_reasons/${name}`).remove();
         }
 
-        // 🚨 부서 방에 영구 박제하기
         window.moveOrAddMember = function(targetGroupKey, targetGroupLabel) {
             const name = prompt(`[${targetGroupLabel}] 부서에 영구 등록할 성도 이름:`);
             if(!name || name.trim() === "") return; const cleanName = name.trim();
@@ -250,7 +261,7 @@
             let targetArr = allMembersData[targetGroupKey] ? [...allMembersData[targetGroupKey]] : [];
             if(!targetArr.includes(cleanName)) { targetArr.push(cleanName); targetArr.sort(); }
             updates['members/' + targetGroupKey] = targetArr;
-            db.ref().update(updates).then(() => { toggleAttendance(cleanName); alert(`🎉 [${cleanName}] 님 영구 이사 및 출석 완료!`); document.getElementById('search-input').value = ""; });
+            db.ref().update(updates).then(() => { toggleAttendance(cleanName); alert(`🎉 [${cleanName}] 님 영구 이사 완료!`); document.getElementById('search-input').value = ""; });
         };
 
         function renderLists() {
@@ -259,12 +270,11 @@
             const activeGroups = currentMode === 1 ? displayGroups1 : displayGroups2;
             let currentSet = currentMode === 1 ? presentSet1 : presentSet2;
 
-            // 🚨 통합 검색 모드
             if (keyword) {
                 const searchedMembers = allMembersFlatList.filter(m => m.includes(keyword));
                 if (searchedMembers.length > 0) {
                     const section = document.createElement('div'); section.className = "bg-blue-50 p-3 rounded-xl shadow-sm border-2 border-blue-400 mb-2";
-                    section.innerHTML = `<h3 class="text-sm font-black text-blue-900 mb-2">🔍 통합 검색 결과 (클릭 시 1회성 출석)</h3>`;
+                    section.innerHTML = `<h3 class="text-sm font-black text-blue-900 mb-2">🔍 통합 검색 결과</h3>`;
                     const grid = document.createElement('div'); grid.className = "grid grid-cols-6 gap-1.5";
                     searchedMembers.forEach(name => {
                         const isPresent = currentSet.has(name); const btn = document.createElement('button');
@@ -276,10 +286,9 @@
                 }
             }
 
-            // 정규 그룹 렌더링
             activeGroups.forEach(group => {
                 let membersArr = allMembersData[group.key] || [];
-                if (keyword && membersArr.filter(m => m.includes(keyword)).length === 0) return; // 검색어 없으면 숨김
+                if (keyword && membersArr.filter(m => m.includes(keyword)).length === 0) return; 
                 
                 const section = document.createElement('div'); section.className = "bg-white p-2 rounded-xl shadow-sm border border-gray-200 mb-2";
                 section.innerHTML = `<h3 class="text-sm font-black text-gray-800 mb-2 flex items-center gap-2 border-b border-gray-100 pb-2 section-title"><span class="w-2 h-4 bg-blue-500 rounded-full"></span>${group.label} <span class="text-xs text-blue-400 font-bold ml-auto">${membersArr.length}명</span></h3>`;
@@ -294,7 +303,6 @@
                 section.appendChild(grid); container.appendChild(section);
             });
             
-            // 방문자 렌더링 (하단)
             const curVis = visitors.filter(v => v.service === currentMode);
             const visSection = document.createElement('div'); visSection.className = "bg-orange-50 p-2 rounded-xl shadow-sm border border-orange-200 mb-2 mt-4";
             visSection.innerHTML = `<h3 class="text-sm font-black text-orange-800 mb-2 border-b border-orange-200 pb-2 section-title">👋 당일 방문자</h3>`;
@@ -318,7 +326,6 @@
 
         function filterMembers() { renderLists(); }
 
-        // 🚨 스마트 방문자 모달
         function openVisitorModal() {
             document.getElementById('vis-name').value = ''; document.getElementById('vis-reason').value = '';
             document.getElementById('vis-isnew').checked = true; document.getElementById('vis-reason').style.display = 'block';
@@ -338,16 +345,40 @@
         window.closeReportCenter = function() { document.getElementById('report-modal').style.display = 'none'; }
         window.closeReportView = function() { document.getElementById('report-view').style.display = 'none'; document.getElementById('main-app').style.display = 'block'; }
 
-        // 🚨 결석자 관리 (장년부만 추출 + 영구 기억)
         function getAdultAbsentees() {
             let absentees = [];
             adultGroupsForAbsentees.forEach(gKey => {
                 (allMembersData[gKey]||[]).forEach(n => {
-                    // 1부, 2부 둘 다 안 온 사람만 결석!
                     if(!presentSet1.has(n) && !presentSet2.has(n) && !absentees.includes(n)) absentees.push(n);
                 });
             });
             return absentees.sort();
+        }
+
+        // 🚀 사유 입력 로직 (1,2,3,4번 전용)
+        window.openReasonModalFor = function(name) {
+            currentReasonTarget = name;
+            document.getElementById('reason-target-name').innerText = name + " 성도";
+            document.getElementById('reason-select-modal').style.display = 'flex';
+        }
+        window.closeReasonModal = function() { document.getElementById('reason-select-modal').style.display = 'none'; }
+        
+        window.setReason = function(type) {
+            db.ref(`global_absentee_reasons/${currentReasonTarget}`).set(type);
+            closeReasonModal(); window.openAbsenteeModal();
+        }
+        window.openReasonInput = function(type) {
+            let title = type === '기타' ? '단순 메모 (보고용 아님)' : '특별 심방/보고 사유 (보고서에 출력됨)';
+            let placeholder = type === '기타' ? '예: 야근, 건강문제' : '목사님께 보고할 상세 내용...';
+            let input = prompt(`[${type}] ${title}\n${placeholder}`);
+            if(input !== null && input.trim() !== "") {
+                db.ref(`global_absentee_reasons/${currentReasonTarget}`).set(`[${type}] ` + input.trim());
+                closeReasonModal(); window.openAbsenteeModal();
+            }
+        }
+        window.clearReason = function() {
+            db.ref(`global_absentee_reasons/${currentReasonTarget}`).remove();
+            closeReasonModal(); window.openAbsenteeModal();
         }
 
         window.openAbsenteeModal = function() {
@@ -357,28 +388,32 @@
             absentees.forEach(name => {
                 const reason = globalAbsenteeReasons[name] || "";
                 const hasReason = !!reason;
+                
+                let badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">미분류</span>';
+                let cleanReason = reason;
+                if(hasReason) {
+                    if(reason === '한국방문') badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500 text-white">🇰🇷 한국</span>';
+                    else if(reason === '타슈켄트 결석') badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-teal-500 text-white">🇺🇿 타슈켄트</span>';
+                    else if(reason.startsWith('[기타]')) { badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-500 text-white">📝 기타</span>'; cleanReason = reason.replace('[기타] ', ''); }
+                    else if(reason.startsWith('[보고]')) { badgeHtml = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-red-500 text-white font-bold shadow-sm">🚨 보고</span>'; cleanReason = reason.replace('[보고] ', ''); }
+                }
+
                 const btn = document.createElement('button');
-                btn.className = `w-full text-left p-3 rounded-lg border-2 mb-2 font-bold text-sm ${hasReason ? 'border-orange-500 bg-orange-50 text-orange-900' : 'border-slate-200 bg-white text-slate-500'}`;
-                btn.innerHTML = `<div class="flex justify-between"><span>${name}</span><span class="text-xs px-2 py-0.5 rounded-full ${hasReason ? 'bg-orange-500 text-white' : 'bg-slate-200'}">${hasReason ? '입력됨' : '사유 입력'}</span></div>${hasReason ? `<div class="mt-2 text-orange-700 font-medium bg-white p-2 rounded border border-orange-200">👉 ${reason}</div>` : ''}`;
-                btn.onclick = () => { 
-                    const newReason = prompt(`[${name}] 사유 (한국방문, 타슈켄트 등):`, reason); 
-                    if(newReason !== null) { 
-                        if(newReason.trim() === "") db.ref(`global_absentee_reasons/${name}`).remove();
-                        else db.ref(`global_absentee_reasons/${name}`).set(newReason.trim()); 
-                    } 
-                };
+                btn.className = `w-full text-left p-3 rounded-xl border-2 mb-2 font-bold text-sm active:scale-95 transition-transform ${hasReason ? (reason.startsWith('[보고]') ? 'border-red-400 bg-red-50 text-red-900' : 'border-indigo-300 bg-indigo-50 text-indigo-900') : 'border-slate-200 bg-white text-slate-600'}`;
+                btn.innerHTML = `<div class="flex justify-between items-center"><span>${name}</span>${badgeHtml}</div>${hasReason ? `<div class="mt-2 text-slate-700 font-medium bg-white p-2 rounded text-[12px] border ${reason.startsWith('[보고]') ? 'border-red-200' : 'border-indigo-100'}">👉 ${cleanReason}</div>` : ''}`;
+                btn.onclick = () => { openReasonModalFor(name); };
                 listContainer.appendChild(btn);
             });
             document.getElementById('absentee-modal').style.display = 'flex';
         }
         window.closeAbsenteeModal = function() { document.getElementById('absentee-modal').style.display = 'none'; }
+        
         function updateAbsenteeBadge() { 
             const abs = getAdultAbsentees();
             let count = 0; abs.forEach(n => { if(globalAbsenteeReasons[n]) count++; });
-            document.getElementById('absentee-count-badge').innerText = `${count}명 작성됨`; 
+            document.getElementById('absentee-count-badge').innerText = `${count}명 완료`; 
         }
 
-        // 🚨 4대장 보고서 렌더링
         window.generateReport = async function(type) {
             const targetDate = document.getElementById('today-date').value.replace(/-/g, '. ');
             const preacher = document.getElementById('rep-preacher').value || "이수정 담임목사"; const scripture = document.getElementById('rep-scripture').value || "미입력"; const title = document.getElementById('rep-title').value || "미입력"; const pray = document.getElementById('rep-pray').value || "미입력"; const note = document.getElementById('rep-note').value || "특이사항 없음";
@@ -386,12 +421,12 @@
             const v1 = visitors.filter(v=>v.service===1); const v2 = visitors.filter(v=>v.service===2);
             const total1 = presentSet1.size + v1.length; 
             const total2 = presentSet2.size + v2.length; 
-            const mainTotal = total1 + total2; // 총계 합산
+            const mainTotal = total1 + total2; 
             
             let html = "";
 
             if (type === 1) {
-                // 📊 1. 예배 종합 보고서 (V7 디자인)
+                // 📊 1. 예배 종합 보고서
                 const snap = await db.ref('attendance/' + document.getElementById('today-date').value).once('value');
                 const todayData = snap.val() || {};
                 const yTotal = todayData['청년부']?.total_snapshot || 0; const mTotal = todayData['중고등부']?.total_snapshot || 0; const eTotal = todayData['유초등부']?.total_snapshot || 0; const kTotal = todayData['유치부']?.total_snapshot || 0;
@@ -454,7 +489,7 @@
                     </div>
                 </div>`;
             } else if (type === 2) {
-                // ✅ 2. 대예배 상세 (전도사님 사진 완벽 복제)
+                // ✅ 2. 대예배 상세
                 const getPList = (groupKeys, currentSet) => {
                     let list = []; groupKeys.forEach(key => { (allMembersData[key]||[]).forEach(n => { if(currentSet.has(n)) list.push(n); }); });
                     return list.sort().join(' ');
@@ -466,12 +501,19 @@
                 const p1_youth = getPList(['청년부'], presentSet1); const p2_youth = getPList(['청년부'], presentSet2);
                 const v1_str = v1.map(v=>`${v.name}(${v.isNew ? v.reason : '방문'})`).join(', ') || ''; const v2_str = v2.map(v=>`${v.name}(${v.isNew ? v.reason : '방문'})`).join(', ') || '';
                 
-                // 🚨 결석자 그룹화 로직 (한국방문 / 타슈켄트 / 기타)
+                // 🚀 결석자 그룹화 로직 (1,2,3,4번 자동 파싱)
                 const absentees = getAdultAbsentees();
                 let koreaList = [], tashList = [], otherList = [];
                 absentees.forEach(n => {
                     let r = globalAbsenteeReasons[n] || "";
-                    if(r.includes('한국')) koreaList.push(n); else if(r.includes('타슈켄트') || r.includes('우즈벡')) tashList.push(n); else if(r) otherList.push(`${n}(${r})`); else otherList.push(n);
+                    if(r === "한국방문") koreaList.push(n);
+                    else if(r === "타슈켄트 결석") tashList.push(n);
+                    else if(r) {
+                        let clean = r.replace('[기타] ', '').replace('[보고] ', '');
+                        otherList.push(`${n}(${clean})`);
+                    } else {
+                        otherList.push(n);
+                    }
                 });
                 
                 let absRows = "";
@@ -498,7 +540,7 @@
                     </tbody>
                 </table>`;
             } else if (type === 3) {
-                // 🌐 3. 전교인 통합 출석부
+                // 🌐 3. 전교인 통합 출석부 (타 부서 이름 파싱 로직 강화!)
                 html = `
                 <div class="flex justify-between items-end border-b-4 tkc-blue-border pb-2 mb-4">
                     <div><h1 class="text-3xl font-black tkc-blue tracking-tighter">전교인 통합 출석 명단</h1></div>
@@ -522,14 +564,17 @@
                                     const vs = dataAll['대예배'].visitors.filter(v=>v.service===parseInt(mode.charAt(0)));
                                     count += vs.length; pNames.push(...vs.map(v=>`[방]${v.name}`));
                                 }
-                                // 장년 결석자는 부서명단에서 뺌 (너무 길어서)
                                 aNames = ["*상세보고서 참조"];
                             }
                         } else {
                             if(dataAll[dept]) { 
                                 count = dataAll[dept].total_snapshot || 0;
-                                // 각 부서별 로직 (간단 요약만)
-                                pNames = ["*각 부서 장부 참조"]; aNames = ["*각 부서 장부 참조"];
+                                // 🚀 형의 걱정 해결: 다른 부서가 present 배열을 저장했다면 이름을 긁어옴!
+                                if(dataAll[dept].present) pNames = Object.keys(dataAll[dept].present);
+                                else if(count > 0) pNames = ["*장부 참조(명단미제출)"];
+                                else pNames = ["-"];
+                                
+                                aNames = ["-"];
                             }
                         }
                         totalAllDepts += count; 
@@ -539,8 +584,8 @@
                             <tr class="border-b border-slate-300">
                                 <td class="py-2 px-2 bg-slate-50 border-r border-slate-300 w-[15%] text-center font-black text-slate-700">${dept}</td>
                                 <td class="py-2 px-2 border-r border-slate-300 w-[10%] text-center font-black text-blue-700">${count}명</td>
-                                <td class="py-2 px-2 border-r border-slate-300 w-[45%] leading-relaxed text-[12px] text-blue-800 font-bold">${pNames.sort().join(', ') || '-'}</td>
-                                <td class="py-2 px-2 leading-relaxed text-[12px] text-red-500 font-medium">${aNames.sort().join(', ') || '-'}</td>
+                                <td class="py-2 px-2 border-r border-slate-300 w-[55%] leading-relaxed text-[12px] text-blue-800 font-bold break-words">${pNames.sort().join(', ') || '-'}</td>
+                                <td class="py-2 px-2 w-[20%] leading-relaxed text-[12px] text-red-500 font-medium break-words">${aNames.sort().join(', ') || '-'}</td>
                             </tr>`; 
                         }
                     }); 
@@ -555,15 +600,21 @@
                     scaleReport(); 
                 }, 200);
             } else if (type === 4) {
-                // 🏥 4. 심방 보고서
+                // 🚨 4. 특별 사유 및 심방 보고서 (4번 항목만 필터링!)
                 const absentees = getAdultAbsentees();
                 let tbody = absentees.map(name => {
                     const r = globalAbsenteeReasons[name];
-                    if(r) return `<tr class="border-b border-slate-300"><td class="py-4 px-4 bg-orange-50 border-r border-slate-300 w-32 text-center font-black text-orange-900 text-base">${name}</td><td class="py-4 px-4 leading-relaxed font-bold text-slate-700">${r}</td></tr>`;
+                    // '4. 특별보고'로 저장된 항목만 골라서 출력!
+                    if(r && r.startsWith('[보고]')) {
+                        const cleanReason = r.replace('[보고]', '').trim();
+                        return `<tr class="border-b border-slate-300"><td class="py-4 px-4 bg-red-50 border-r border-slate-300 w-32 text-center font-black text-red-900 text-base">${name}</td><td class="py-4 px-4 leading-relaxed font-bold text-slate-800">${cleanReason}</td></tr>`;
+                    }
                     return "";
                 }).join(''); 
-                if(!tbody) tbody = `<tr><td colspan="2" class="py-10 text-center font-bold text-gray-400">사유가 작성된 결석자가 없습니다.</td></tr>`; 
-                html = `<div class="flex justify-between items-end border-b-4 border-orange-600 pb-3 mb-8"><div><h1 class="text-4xl font-black text-orange-700 tracking-tighter">결석 사유 및 심방 보고</h1><p class="text-xs font-bold text-gray-400 mt-1 uppercase">Tashkent Korean Church</p></div><div class="text-right"><p class="text-2xl font-black text-orange-700 tracking-tight">${targetDate}</p></div></div><table class="w-full border-2 border-orange-800 text-sm mb-6"><thead><tr class="bg-orange-100 border-b-2 border-orange-800 text-orange-900"><th class="py-3 border-r border-orange-300">성 명</th><th class="py-3">결석 사유 및 심방 내용</th></tr></thead><tbody class="text-left font-bold text-slate-800">${tbody}</tbody></table>`;
+                
+                if(!tbody) tbody = `<tr><td colspan="2" class="py-10 text-center font-bold text-gray-400">이번 주 특별 심방/보고 대상자가 없습니다.</td></tr>`; 
+                
+                html = `<div class="flex justify-between items-end border-b-4 border-red-600 pb-3 mb-8"><div><h1 class="text-4xl font-black text-red-700 tracking-tighter">특별 사유 및 심방 보고</h1><p class="text-xs font-bold text-gray-400 mt-1 uppercase">Tashkent Korean Church</p></div><div class="text-right"><p class="text-2xl font-black text-red-700 tracking-tight">${targetDate}</p></div></div><table class="w-full border-2 border-red-800 text-sm mb-6"><thead><tr class="bg-red-100 border-b-2 border-red-800 text-red-900"><th class="py-3 border-r border-red-300">성 명</th><th class="py-3">특별 보고 및 심방 내용</th></tr></thead><tbody class="text-left font-bold text-slate-800">${tbody}</tbody></table>`;
             }
 
             document.getElementById('a4-content').innerHTML = html;
