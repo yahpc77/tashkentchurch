@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>⛪ 교육부서 출석 마스터 V7.2 (완벽자동화)</title>
+    <title>⛪ 중고등부 출석 마스터 V7.3 (가독성 & 버그수정)</title>
     <link rel="manifest" href="manifest_middle.json">
     <link rel="apple-touch-icon" href="logo.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -96,7 +96,7 @@
                 <input type="text" id="rep-title" placeholder="제목 (예: 나의 가장 친한친구)" class="w-full border border-slate-300 rounded p-2 text-sm font-bold outline-none">
             </div>
             <button onclick="openAbsenteeModal()" class="w-full bg-orange-100 text-orange-700 border border-orange-300 py-3 rounded-xl font-black text-sm mb-6 active:scale-95 flex justify-between px-4 items-center transition-transform"><span>✍️ 결석 사유(영구기억) 입력</span><span id="absentee-count-badge" class="bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">0명 완료</span></button>
-            <button onclick="generateA4Report()" class="w-full bg-indigo-700 text-white py-4 rounded-xl font-black text-base shadow-lg active:scale-95 transition-transform text-center">🚀 V7.2 예배 보고서(PDF) 생성</button>
+            <button onclick="generateA4Report()" class="w-full bg-indigo-700 text-white py-4 rounded-xl font-black text-base shadow-lg active:scale-95 transition-transform text-center">🚀 V7.3 예배 보고서(PDF) 생성</button>
         </div>
     </div>
 
@@ -104,12 +104,12 @@
     <div id="absentee-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl p-5 shadow-2xl flex flex-col h-[80vh]">
             <div class="flex justify-between items-center mb-3"><h2 class="text-lg font-black text-orange-700">✍️ 결석 사유 (영구기억)</h2><button onclick="closeAbsenteeModal()" class="text-gray-500 font-bold bg-gray-100 px-3 py-1 rounded-lg text-sm">완료</button></div>
-            <p class="text-[11px] text-slate-500 mb-2 leading-tight">이름을 클릭하여 사유를 분류하세요.<br>입력된 사유는 출석하기 전까지 매주 유지됩니다.</p>
+            <p class="text-[11px] text-slate-500 mb-2 leading-tight">이름을 클릭하여 사유를 선택/작성하세요.<br>입력된 사유는 출석하기 전까지 매주 유지됩니다.</p>
             <div id="absentee-list-container" class="overflow-y-auto flex-1 space-y-2 bg-slate-50 p-2 rounded-lg border border-slate-200"></div>
         </div>
     </div>
 
-    <!-- 🚀 심플 3버튼 사유 선택 팝업 (청년/교육부서용) -->
+    <!-- 🚀 심플 3버튼 사유 선택 팝업 -->
     <div id="reason-select-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] flex justify-center items-end p-0 sm:items-center sm:p-4">
         <div class="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl pb-10 sm:pb-6 transform transition-transform">
             <div class="flex justify-between items-center mb-4">
@@ -138,7 +138,6 @@
     </div>
 
     <script>
-        // 🚨 [중고등부, 유초등부, 유아부 중에 선택해서 쓰세요!]
         const DEPT_NAME = "중고등부"; 
 
         const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
@@ -147,10 +146,10 @@
         
         let allMembersObj = {}; let presentSet = new Set();
         let visitorsNew = []; let visitorsRecurring = []; 
-        let globalAbsenteeReasons = {}; // 🚀 영구기억 보관소
+        let globalAbsenteeReasons = {}; 
         let currentReportDetails = {}; 
         let teacherSet = new Set(); 
-        let currentReasonTarget = ""; // 모달 타겟
+        let currentReasonTarget = ""; 
 
         function parseGroupInfo(groupKey) {
             const prefix = DEPT_NAME + "_"; if (!groupKey.startsWith(prefix)) return null;
@@ -162,7 +161,7 @@
         }
 
         function initApp() {
-            document.getElementById('app-title').innerText = `⛪ ${DEPT_NAME} 출석부 V7.2`;
+            document.getElementById('app-title').innerText = `⛪ ${DEPT_NAME} 출석부 V7.3`;
             document.getElementById('today-date').value = new Date().toISOString().split('T')[0];
             
             db.ref('members').on('value', (snap) => {
@@ -206,7 +205,11 @@
             });
 
             db.ref(`attendance/${dateStr}/report_details_${DEPT_NAME}`).on('value', snap => {
-                currentReportDetails = snap.val() || {}; fillReportInputs();
+                currentReportDetails = snap.val() || {}; 
+                // DB에서 불러온 값을 인풋창에 채워넣기
+                document.getElementById('rep-preacher').value = currentReportDetails.preacher || ""; 
+                document.getElementById('rep-scripture').value = currentReportDetails.scripture || ""; 
+                document.getElementById('rep-title').value = currentReportDetails.title || "";
             });
         }
 
@@ -215,7 +218,6 @@
             const isPresent = presentSet.has(name);
             db.ref(`attendance/${dateStr}/${DEPT_NAME}/present_list/${name}`).set(isPresent ? null : true);
             document.getElementById('search-input').value = ""; 
-            
             if(!isPresent) db.ref(`global_absentee_reasons_${DEPT_NAME}/${name}`).remove();
         }
 
@@ -251,7 +253,6 @@
             }
         };
 
-        // 🚀 길게 눌러 삭제
         function findGroupByName(name) {
             for (let k in allMembersObj) { if ((allMembersObj[k] || []).includes(name)) return k; }
             return null;
@@ -328,7 +329,6 @@
                 
                 (hasKeyword ? filteredMembers : displayMembers).forEach(name => {
                     const isPresent = presentSet.has(name); 
-                    
                     if (isPresent && !teacherSet.has(name)) { currentStudentCount++; }
 
                     const btn = document.createElement('button');
@@ -370,10 +370,14 @@
 
         window.submitReportDetails = function() {
             const targetDate = document.getElementById('today-date').value;
-            currentReportDetails = { preacher: document.getElementById('rep-preacher').value, scripture: document.getElementById('rep-scripture').value, title: document.getElementById('rep-title').value };
+            currentReportDetails = { 
+                preacher: document.getElementById('rep-preacher').value, 
+                scripture: document.getElementById('rep-scripture').value, 
+                title: document.getElementById('rep-title').value 
+            };
             db.ref(`attendance/${targetDate}/report_details_${DEPT_NAME}`).set(currentReportDetails);
             db.ref(`attendance/${targetDate}/${DEPT_NAME}/total_snapshot`).set(parseInt(document.getElementById('count-display').innerText));
-            alert(`💾 최종 보고서 텍스트 및 출석 인원 저장 완료!`);
+            alert(`💾 최종 마감 데이터가 서버에 안전하게 저장되었습니다!`);
         }
 
         window.openReportCenter = function() { document.getElementById('report-modal').style.display = 'flex'; }
@@ -391,7 +395,6 @@
             return absentees;
         }
 
-        // 🚀 사유 입력 3버튼 로직
         window.openReasonModalFor = function(name) {
             currentReasonTarget = name.replace(" (교사)", "");
             document.getElementById('reason-target-name').innerText = name;
@@ -404,7 +407,7 @@
             closeReasonModal(); window.openAbsenteeModal();
         }
         window.openReasonInput = function() {
-            let input = prompt(`[${currentReasonTarget}] 사유 직접 작성:\n(예: 야근, 독감, 시골방문 등)`);
+            let input = prompt(`[${currentReasonTarget}] 사유 직접 작성:\n(예: 독감, 가족여행, 시골방문 등)`);
             if(input !== null && input.trim() !== "") {
                 db.ref(`global_absentee_reasons_${DEPT_NAME}/${currentReasonTarget}`).set(input.trim());
                 closeReasonModal(); window.openAbsenteeModal();
@@ -453,13 +456,22 @@
             return snap.val() || null;
         };
 
+        // 🚨 V7.3 찐최종 보고서 생성 (모바일 인풋 버그 완전 해결)
         window.generateA4Report = async function() {
             const dateVal = document.getElementById('today-date').value;
             const targetDateStr = dateVal.replace(/-/g, '. ');
 
-            const preacher = currentReportDetails.preacher || "미입력";
-            const scripture = currentReportDetails.scripture || "미입력";
-            const title = currentReportDetails.title || "미입력";
+            // 🚨 모바일 버그 핵심 해결: 버튼 누르는 순간, 인풋창에 적힌 텍스트를 무조건 강제로 긁어옵니다!
+            const preacher = document.getElementById('rep-preacher').value || "미입력";
+            const scripture = document.getElementById('rep-scripture').value || "미입력";
+            const title = document.getElementById('rep-title').value || "미입력";
+
+            // 긁어온 텍스트를 파이어베이스에 조용히 저장 (다음 주나 다시 열었을 때 날아가지 않게!)
+            db.ref(`attendance/${dateVal}/report_details_${DEPT_NAME}`).set({
+                preacher: preacher,
+                scripture: scripture,
+                title: title
+            });
 
             let groupRowsHtml = '';
             let globalStudentPresentCount = visitorsNew.length; 
@@ -501,15 +513,35 @@
 
             const visHtml = visitorsNew.map(v=>`${v.name}(${v.reason})`).join(', ') || "없음";
             
-            // 🚀 결석 사유 보고서용 텍스트 조립
+            // 🚨 결석 사유 완벽 정리 로직 (입력 안 한 사람도 모두 출력!)
             const absentees = getAbsentees();
             let absTexts = [];
+            let noReasonAbsentees = []; // 사유 안 적은 학생들
+
             absentees.forEach(name => {
-                let realName = name.replace(" (교사)", "");
-                let r = globalAbsenteeReasons[realName];
-                if(r) absTexts.push(`[${name}] ${r}`);
+                if(!name.includes("(교사)")) { 
+                    let r = globalAbsenteeReasons[name];
+                    if(r) {
+                        // 사유 적은 학생은 파란색 텍스트로 강조
+                        absTexts.push(`<span class="font-black text-blue-800">[${name}] ${r}</span>`);
+                    } else {
+                        // 사유 안 적은 학생은 따로 모아둠
+                        noReasonAbsentees.push(name);
+                    }
+                }
             });
-            let absReasonHtml = absTexts.length > 0 ? absTexts.join(' / ') : "<span class='text-red-400 font-medium'>작성된 결석/특이 사유가 없습니다.</span>";
+
+            // 빨간 박스 안에 들어갈 HTML 조립
+            let absReasonHtml = "";
+            if(absTexts.length > 0) {
+                absReasonHtml += absTexts.join('<br>') + "<br><br>"; // 사유 있는 학생들 먼저 나열
+            }
+            if(noReasonAbsentees.length > 0) {
+                absReasonHtml += `<span class="text-slate-500 font-normal">※ 사유 미입력: ${noReasonAbsentees.join(', ')}</span>`;
+            }
+            if(absTexts.length === 0 && noReasonAbsentees.length === 0) {
+                absReasonHtml = "<span class='text-blue-600 font-medium'>결석자가 없습니다. 전원 출석! 🎉</span>";
+            }
 
             const html = `
                 <div class="border-b-4 border-blue-900 pb-3 mb-6 flex justify-between items-end">
@@ -535,7 +567,7 @@
                         <div class="border border-slate-200 rounded-lg p-3 bg-slate-50 flex-1">
                             <p class="font-black text-green-700 text-[12px] mb-1">🌱 방문자 및 새친구</p>
                             <p class="font-bold text-slate-800 text-[13px] mb-4">${visHtml}</p>
-                            <p class="font-black text-orange-600 text-[12px] mb-1">📝 특이사항 및 결석사유 요약</p>
+                            <p class="font-black text-orange-600 text-[12px] mb-1">📝 결석자 현황 및 사유</p>
                             <div class="bg-red-50 text-red-800 p-2 rounded text-[12px] font-bold leading-relaxed">${absReasonHtml}</div>
                         </div>
                     </div>
@@ -550,7 +582,8 @@
                         </div>
                         <div class="border border-slate-200 rounded-xl p-3 bg-white mt-auto">
                             <p class="text-[12px] font-black text-slate-700 mb-2 flex items-center gap-1">📊 최근 4주 출석 추이 <span class="text-[10px] font-normal text-slate-400 ml-1">(학생 기준)</span></p>
-                            <div class="relative w-full" style="height: 110px;">
+                            <!-- 🚨 높이를 기존 110px에서 140px로 올려서 그래프 윗부분 여백 확보 -->
+                            <div class="relative w-full" style="height: 140px;">
                                 <canvas id="trendChart"></canvas>
                             </div>
                         </div>
@@ -569,7 +602,6 @@
             document.getElementById('a4-content').innerHTML = html;
             closeReportCenter(); document.getElementById('main-app').style.display = 'none'; document.getElementById('report-view').style.display = 'block';
             
-            // 🚀 과거 3주 데이터 자동 조회 (학생 기준 카운트)
             let w1 = await getPastCount(7) ?? Math.max(0, globalStudentPresentCount - 1); 
             let w2 = await getPastCount(14) ?? Math.max(0, globalStudentPresentCount - 2);
             let w3 = await getPastCount(21) ?? Math.max(0, globalStudentPresentCount + 1);
@@ -587,13 +619,35 @@
                             borderRadius: 4, barPercentage: 0.6
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false, min: 0 }, x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8' } } }, animation: { onComplete: function() { const chartInstance = this; const ctx = chartInstance.ctx; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.font = 'bold 11px "Noto Sans KR"'; chartInstance.data.datasets[0].data.forEach(function(val, i) { const meta = chartInstance.getDatasetMeta(0); const bar = meta.data[i]; ctx.fillStyle = i === 3 ? '#312e81' : '#64748b'; ctx.fillText(val, bar.x, bar.y - 4); }); } } }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        // 🚨 레이아웃 상단에 강제 여백 25px 추가해서 숫자 안 잘리게 함
+                        layout: { padding: { top: 25 } }, 
+                        plugins: { legend: { display: false } }, 
+                        scales: { 
+                            y: { 
+                                display: false, 
+                                min: 0, 
+                                // 🚨 최대 출석인원보다 15명 더 높게 Y축을 설정해서 천장에 닿지 않게 방어
+                                suggestedMax: Math.max(10, globalStudentPresentCount + 15) 
+                            }, 
+                            x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8' } } 
+                        }, 
+                        animation: { 
+                            onComplete: function() { 
+                                const chartInstance = this; const ctx = chartInstance.ctx; 
+                                ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.font = 'bold 12px "Noto Sans KR"'; 
+                                chartInstance.data.datasets[0].data.forEach(function(val, i) { 
+                                    const meta = chartInstance.getDatasetMeta(0); const bar = meta.data[i]; 
+                                    ctx.fillStyle = i === 3 ? '#312e81' : '#64748b'; 
+                                    ctx.fillText(val, bar.x, bar.y - 6); 
+                                }); 
+                            } 
+                        } 
+                    }
                 });
             }, 100);
-        }
-
-        function fillReportInputs() {
-            document.getElementById('rep-preacher').value = currentReportDetails.preacher || ""; document.getElementById('rep-scripture').value = currentReportDetails.scripture || ""; document.getElementById('rep-title').value = currentReportDetails.title || "";
         }
 
         function scaleReport() {
