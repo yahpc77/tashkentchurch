@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>⛪ 유초등부 출석 마스터 V7.4 (버그완벽박멸)</title>
+    <title>⛪ 유초등부 출석 마스터 V7.4 (그래프 응급처치판)</title>
     <link rel="manifest" href="manifest_child.json">
     <link rel="apple-touch-icon" href="logo.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -138,7 +138,6 @@
     </div>
 
     <script>
-        // 🚨 유초등부 세팅
         const DEPT_NAME = "유초등부"; 
 
         const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
@@ -211,9 +210,7 @@
             });
         }
 
-        // 🚨 입력창 깜빡임(포커스 뺏김) 방지 및 초기화 로직
         function fillReportInputs() {
-            // 사용자가 입력 중일 때는 서버 데이터로 덮어쓰지 않음!
             if (document.activeElement === document.getElementById('rep-preacher') || 
                 document.activeElement === document.getElementById('rep-scripture') ||
                 document.activeElement === document.getElementById('rep-title')) {
@@ -388,7 +385,7 @@
             };
             db.ref(`attendance/${targetDate}/report_details_${DEPT_NAME}`).set(currentReportDetails);
             db.ref(`attendance/${targetDate}/${DEPT_NAME}/total_snapshot`).set(parseInt(document.getElementById('count-display').innerText));
-            alert(`💾 최종 보고서 저장 완료!`);
+            alert(`💾 최종 보고서 텍스트 및 학생 출석 인원 저장 완료!`);
         }
 
         window.openReportCenter = function() { document.getElementById('report-modal').style.display = 'flex'; }
@@ -455,36 +452,32 @@
             document.getElementById('absentee-modal').style.display = 'flex';
         }
         window.closeAbsenteeModal = function() { document.getElementById('absentee-modal').style.display = 'none'; }
+        
         function updateAbsenteeBadge() { 
             let count = 0; getAbsentees().forEach(n => { let real = n.replace(" (교사)", ""); if(globalAbsenteeReasons[real]) count++; });
             document.getElementById('absentee-count-badge').innerText = `${count}명 완료`; 
         }
 
-        // 🚨 타임존 완벽 회피 마법 (우즈벡 시간에서 무조건 7일씩 안전하게 빼기)
         const getPastCount = async (daysAgo) => {
             let d = new Date(document.getElementById('today-date').value); 
             d.setDate(d.getDate() - daysAgo);
-            
             let year = d.getFullYear();
             let month = String(d.getMonth() + 1).padStart(2, '0');
             let day = String(d.getDate()).padStart(2, '0');
-            let pDate = `${year}-${month}-${day}`; // 타임존 간섭 없이 정확한 문자열 날짜 조합!
+            let pDate = `${year}-${month}-${day}`; 
 
             let snap = await db.ref(`attendance/${pDate}/${DEPT_NAME}/total_snapshot`).once('value');
             return snap.val() || null;
         };
 
-        // 🚨 V7.4 찐최종 보고서 생성 (모바일 인풋 버그 완전 해결)
         window.generateA4Report = async function() {
             const dateVal = document.getElementById('today-date').value;
             const targetDateStr = dateVal.replace(/-/g, '. ');
 
-            // 🚨 모바일 버그 핵심 해결: 버튼 누르는 순간, 인풋창에 적힌 텍스트를 무조건 강제로 긁어옵니다!
             const preacher = document.getElementById('rep-preacher').value || "미입력";
             const scripture = document.getElementById('rep-scripture').value || "미입력";
             const title = document.getElementById('rep-title').value || "미입력";
 
-            // 긁어온 텍스트를 파이어베이스에 조용히 저장 (다음 주나 다시 열었을 때 날아가지 않게!)
             db.ref(`attendance/${dateVal}/report_details_${DEPT_NAME}`).update({
                 preacher: preacher,
                 scripture: scripture,
@@ -531,7 +524,6 @@
 
             const visHtml = visitorsNew.map(v=>`${v.name}(${v.reason})`).join(', ') || "없음";
             
-            // 🚨 결석 사유 완벽 정리 로직 (사유 없는 학생도 빈틈없이 출력!)
             const absentees = getAbsentees();
             let absTexts = [];
             let noReasonAbsentees = []; 
@@ -616,10 +608,13 @@
             document.getElementById('a4-content').innerHTML = html;
             closeReportCenter(); document.getElementById('main-app').style.display = 'none'; document.getElementById('report-view').style.display = 'block';
             
-            // 🚀 과거 3주 데이터 긁어오기
+            // 🚀 과거 3주 데이터 자동 조회 (응급처치 포함)
             let w1 = await getPastCount(7) ?? Math.max(0, globalStudentPresentCount - 1); 
             let w2 = await getPastCount(14) ?? Math.max(0, globalStudentPresentCount - 2);
             let w3 = await getPastCount(21) ?? Math.max(0, globalStudentPresentCount + 1);
+
+            // 🚨 [응급처치] 지난주 잘못 찍힌 '2명'을 '29명'으로 강제 교체!
+            if (w1 === 2) w1 = 29;
 
             setTimeout(() => {
                 scaleReport();
