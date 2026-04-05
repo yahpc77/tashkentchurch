@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>⛪ 대예배 출석부 V7.7 (완벽동기화판)</title>
+    <title>⛪ 대예배 출석부 V7.10 (방문자 3단계 완벽분리)</title>
     
     <link rel="manifest" href="manifest.json?v=999">
     <link rel="apple-touch-icon" href="logo.png?v=999">
@@ -60,7 +60,7 @@
         <!-- 상단 헤더 -->
         <div class="bg-white shadow-sm px-3 py-3 border-b-4 border-blue-700 sticky top-0 z-30">
             <div class="flex justify-between items-center mb-3">
-                <h1 class="text-lg font-black text-blue-900 tracking-tight section-title">⛪ 대예배 출석부 V7.7</h1>
+                <h1 class="text-lg font-black text-blue-900 tracking-tight section-title">⛪ 대예배 출석부 V7.10</h1>
                 <input type="date" id="today-date" class="text-sm font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded border border-gray-300 outline-none">
             </div>
             
@@ -89,16 +89,24 @@
         </div>
     </div>
 
-    <!-- 방문자 모달 -->
+    <!-- 🚨 방문자 모달 (3단계 완벽 분리 UI) -->
     <div id="visitor-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
             <h2 class="text-xl font-black text-orange-700 mb-4">👋 방문자 추가</h2>
             <input type="text" id="vis-name" placeholder="이름 입력" class="w-full border-2 border-orange-300 rounded-lg p-3 text-lg font-bold mb-3 outline-none focus:border-orange-500">
-            <label class="flex items-center gap-2 bg-orange-50 p-3 rounded-lg border border-orange-200 mb-3 cursor-pointer">
-                <input type="checkbox" id="vis-isnew" class="w-5 h-5 accent-orange-600" checked onchange="document.getElementById('vis-reason').style.display = this.checked ? 'block' : 'none'">
-                <span class="font-bold text-orange-900 text-sm">🆕 오늘 처음 오신 새가족입니까?</span>
-            </label>
-            <input type="text" id="vis-reason" placeholder="방문 사유 (예: 출장, 친지 방문)" class="w-full border border-slate-300 rounded-lg p-3 text-sm font-bold mb-5 outline-none">
+            
+            <div class="bg-orange-50 p-3 rounded-lg border border-orange-200 mb-4">
+                <p class="text-sm font-black text-orange-900 mb-2">어떤 방문자이신가요?</p>
+                <select id="vis-type" onchange="toggleReasonInput()" class="w-full border-2 border-orange-300 rounded-lg p-2 text-sm font-bold outline-none mb-2 bg-white">
+                    <option value="new">🌱 1. 새가족 (교회 등록⭕)</option>
+                    <option value="visit">👋 2. 단순 방문 (출장, 여행 등 등록❌)</option>
+                    <option value="recurring">🔄 3. 계속 방문 (명단보고❌, 숫자만 합산)</option>
+                </select>
+                <div id="vis-reason-container" style="display:none;">
+                    <input type="text" id="vis-reason" placeholder="사유 (예: 출장, 친지방문 등)" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-bold outline-none">
+                </div>
+            </div>
+
             <div class="flex gap-2">
                 <button onclick="document.getElementById('visitor-modal').style.display='none'" class="flex-1 bg-slate-200 text-slate-700 py-3 rounded-xl font-black active:scale-95">취소</button>
                 <button onclick="saveVisitor()" class="flex-1 bg-orange-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95">등록하기</button>
@@ -351,14 +359,30 @@
                 section.appendChild(grid); container.appendChild(section);
             });
             
+            // 🚨 V7.10 방문자 목록 렌더링 개선 (3단계 분류 표시)
             const curVis = visitors.filter(v => v.service === currentMode);
             const visSection = document.createElement('div'); visSection.className = "bg-orange-50 p-2 rounded-xl shadow-sm border border-orange-200 mb-2 mt-4";
             visSection.innerHTML = `<h3 class="text-sm font-black text-orange-800 mb-2 border-b border-orange-200 pb-2 section-title">👋 당일 방문자</h3>`;
             const visGrid = document.createElement('div'); visGrid.className = "grid grid-cols-4 gap-1.5";
             curVis.forEach((v, idx) => { 
                 const btn = document.createElement('button'); 
-                btn.className = `member-btn w-full text-center text-[12px] flex flex-col items-center py-1 ${v.isNew ? 'status-visitor' : 'bg-slate-400 text-white'}`; 
-                btn.innerHTML = `<span>${v.name}</span><span class="text-[9px] opacity-80 mt-0.5">${v.isNew ? v.reason : '기존방문'}</span>`; 
+                
+                // 타입에 따라 색상과 텍스트 분기 처리
+                let statusClass = '';
+                let reasonText = '';
+                if(v.type === 'new') {
+                    statusClass = 'status-visitor'; // 주황색
+                    reasonText = '새가족';
+                } else if(v.type === 'visit') {
+                    statusClass = 'bg-teal-500 text-white border-teal-600'; // 청록색
+                    reasonText = v.reason || '단순방문';
+                } else {
+                    statusClass = 'bg-slate-400 text-white'; // 회색
+                    reasonText = '계속방문(보고❌)';
+                }
+
+                btn.className = `member-btn w-full text-center text-[12px] flex flex-col items-center py-1 ${statusClass}`; 
+                btn.innerHTML = `<span>${v.name}</span><span class="text-[9px] opacity-80 mt-0.5">${reasonText}</span>`; 
                 btn.onclick = () => { if(confirm(`${v.name} 삭제?`)) { 
                     const realIdx = visitors.indexOf(v); visitors.splice(realIdx, 1); 
                     db.ref(`attendance/${document.getElementById('today-date').value}/대예배/visitors`).set(visitors); 
@@ -374,19 +398,37 @@
 
         function filterMembers() { renderLists(); }
 
+        // 🚨 V7.10 모달창 동작 개선
+        window.toggleReasonInput = function() {
+            const type = document.getElementById('vis-type').value;
+            // 단순 방문일 때만 사유 입력칸 노출
+            document.getElementById('vis-reason-container').style.display = type === 'visit' ? 'block' : 'none';
+        }
+
         function openVisitorModal() {
-            document.getElementById('vis-name').value = ''; document.getElementById('vis-reason').value = '';
-            document.getElementById('vis-isnew').checked = true; document.getElementById('vis-reason').style.display = 'block';
+            document.getElementById('vis-name').value = ''; 
+            document.getElementById('vis-reason').value = '';
+            document.getElementById('vis-type').value = 'new';
+            toggleReasonInput(); // 초기 상태 렌더링
             document.getElementById('visitor-modal').style.display = 'flex';
         }
+        
+        // 🚨 V7.10 방문자 저장 로직 (3단계 타입 추가)
         window.saveVisitor = function() {
             const name = document.getElementById('vis-name').value.trim();
             if(!name) { alert("이름을 입력하세요!"); return; }
-            const isNew = document.getElementById('vis-isnew').checked;
-            const reason = document.getElementById('vis-reason').value.trim() || "새가족";
-            visitors.push({ name: name, isNew: isNew, reason: reason, service: currentMode });
+            
+            const type = document.getElementById('vis-type').value;
+            let reason = "";
+            
+            if(type === 'new') reason = "새가족";
+            else if(type === 'visit') reason = document.getElementById('vis-reason').value.trim() || "단순방문";
+            else reason = "계속방문"; // recurring
+
+            visitors.push({ name: name, type: type, reason: reason, service: currentMode });
             db.ref(`attendance/${document.getElementById('today-date').value}/대예배/visitors`).set(visitors);
             document.getElementById('visitor-modal').style.display = 'none';
+            renderLists();
         }
 
         window.openReportCenter = function() { document.getElementById('report-modal').style.display = 'flex'; }
@@ -482,12 +524,15 @@
                 const yTotal = todayData['청년부']?.total_snapshot || 0; const mTotal = todayData['중고등부']?.total_snapshot || 0; const eTotal = todayData['유초등부']?.total_snapshot || 0; const kTotal = todayData['유치부']?.total_snapshot || 0;
                 const deptTotal = yTotal + mTotal + eTotal + kTotal; const grandTotal = mainTotal + deptTotal;
 
-                const visHtml = [...v1.map(v=>`[1부] ${v.name}(${v.isNew ? v.reason : '방문'})`), ...v2.map(v=>`[2부] ${v.name}(${v.isNew ? v.reason : '방문'})`)].join('<br>') || "없음";
+                // 🚨 1번 보고서: 새가족과 단순방문자만 텍스트 출력 (계속방문은 제외)
+                const v1_report = v1.filter(v=>v.type === 'new' || v.type === 'visit');
+                const v2_report = v2.filter(v=>v.type === 'new' || v.type === 'visit');
+                const visHtml = [...v1_report.map(v=>`[1부] ${v.name}(${v.type === 'new' ? '새가족' : v.reason})`), ...v2_report.map(v=>`[2부] ${v.name}(${v.type === 'new' ? '새가족' : v.reason})`)].join('<br>') || "없음";
                 
                 html = `
                 <div class="flex justify-between items-end border-b-4 tkc-blue-border pb-3 mb-6">
                     <div><h1 class="text-3xl font-black tkc-blue tracking-tighter">통합 예배 및 출석 보고서</h1><p class="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Tashkent Korean Church</p></div>
-                    <div class="text-right leading-tight"><p class="text-xl font-black tkc-blue tracking-tight">${targetDate}</p><p class="text-[11px] font-bold text-gray-500 mt-1">인도 및 설교: ${preacher}</p></div>
+                    <div class="text-right leading-tight"><p class="text-xl font-black tkc-blue tracking-tight">${targetDate}</p><p class="text-[11px] font-bold text-gray-500 mt-1">설교/기도: ${preacher} / ${pray}</p></div>
                 </div>
                 <div class="grid grid-cols-2 gap-8 mb-6">
                     <div class="space-y-6">
@@ -531,8 +576,7 @@
                             </table>
                         </div>
                         <div>
-                            <!-- 🚨 막대 그래프를 위해 공간 확보 -->
-                            <div class="border border-slate-200 rounded-xl p-2 bg-white mb-4" style="position: relative; height: 130px; width: 100%;"><canvas id="trendChart"></canvas></div>
+                            <div class="border border-slate-200 rounded-xl p-2 bg-white mb-4" style="position: relative; height: 110px; width: 100%;"><canvas id="trendChart"></canvas></div>
                             <div class="bg-indigo-900 p-4 rounded-xl flex justify-between items-center shadow-lg">
                                 <div><p class="text-indigo-200 text-[10px] font-bold mb-0.5 uppercase tracking-wider">Total Attendance</p><p class="text-[15px] font-black text-white">총 출석 인원</p></div>
                                 <div class="text-right"><span class="text-3xl font-black text-white tracking-tighter">${grandTotal}</span><span class="text-[15px] font-bold text-indigo-200 ml-1">명</span></div>
@@ -550,7 +594,12 @@
                 const p1_reg = getPList(['1부_등록교인'], presentSet1); const p2_reg = getPList(['2부_등록교인'], presentSet2);
                 const p1_unreg = getPList(['미등록교인', '미분류_교인'], presentSet1); const p2_unreg = getPList(['미등록교인', '미분류_교인'], presentSet2);
                 const p1_youth = getPList(['청년부'], presentSet1); const p2_youth = getPList(['청년부'], presentSet2);
-                const v1_str = v1.map(v=>`${v.name}(${v.isNew ? v.reason : '방문'})`).join(', ') || ''; const v2_str = v2.map(v=>`${v.name}(${v.isNew ? v.reason : '방문'})`).join(', ') || '';
+                
+                // 🚨 2번 보고서: 새가족과 단순방문자만 텍스트 명단에 올림
+                const v1_report = v1.filter(v=>v.type === 'new' || v.type === 'visit'); 
+                const v2_report = v2.filter(v=>v.type === 'new' || v.type === 'visit');
+                const v1_str = v1_report.map(v=>`${v.name}(${v.type === 'new' ? '새가족' : v.reason})`).join(', ') || ''; 
+                const v2_str = v2_report.map(v=>`${v.name}(${v.type === 'new' ? '새가족' : v.reason})`).join(', ') || '';
                 
                 const absentees = getAdultAbsentees();
                 let koreaList = [], tashList = [], otherList = [];
@@ -584,13 +633,12 @@
                         <tr><td class="bg-gray-50 font-black">등록 교인</td><td class="text-left">${p1_reg||'-'}</td><td class="text-left">${p2_reg||'-'}</td></tr>
                         <tr><td class="bg-gray-50 font-black">미등록 교인</td><td class="text-left">${p1_unreg||'-'}</td><td class="text-left">${p2_unreg||'-'}</td></tr>
                         <tr><td class="bg-gray-50 font-black">청년부</td><td class="text-left">${p1_youth||'-'}</td><td class="text-left">${p2_youth||'-'}</td></tr>
-                        <tr><td class="bg-gray-50 font-black">방문자</td><td class="text-left">${v1_str||'-'}</td><td class="text-left">${v2_str||'-'}</td></tr>
+                        <tr><td class="bg-gray-50 font-black">새가족/방문</td><td class="text-left">${v1_str||'-'}</td><td class="text-left">${v2_str||'-'}</td></tr>
                         <tr class="bg-blue-50 font-black text-blue-900 text-[15px]"><td>총계</td><td>${total1} 명</td><td>${total2} 명</td></tr>
                         <tr><td class="bg-gray-50 font-black">결석자</td><td colspan="2" class="text-left text-red-600 font-bold leading-loose">${absRows}</td></tr>
                     </tbody>
                 </table>`;
             } else if (type === 3) {
-                // 🚨 3번 통합 출석부 (결석자 & 부서 연동 완벽 수정)
                 html = `
                 <div class="flex justify-between items-end border-b-4 tkc-blue-border pb-2 mb-4">
                     <div><h1 class="text-3xl font-black tkc-blue tracking-tighter">전교인 통합 출석 명단</h1></div>
@@ -605,23 +653,31 @@
                     
                     const mainAbsentees = getAdultAbsentees();
 
-                    // 1부 데이터 파싱
+                    // 🚨 3. 전교인 명단에서도 '새가족'만 텍스트 명단에 올림
                     let pNames1 = [], v1_rep = [];
                     if(dataAll['대예배'] && dataAll['대예배']['1부']) pNames1 = Object.keys(dataAll['대예배']['1부'].present || {});
-                    if(dataAll['대예배'] && dataAll['대예배'].visitors) v1_rep = dataAll['대예배'].visitors.filter(v=>v.service===1).map(v=>`[방]${v.name}`);
-                    let count1 = pNames1.length + v1_rep.length;
-                    pNames1.push(...v1_rep);
-                    totalAllDepts += count1;
+                    if(dataAll['대예배'] && dataAll['대예배'].visitors) {
+                        const allV1 = dataAll['대예배'].visitors.filter(v=>v.service===1);
+                        v1_rep = allV1.filter(v=>v.type === 'new').map(v=>`[방]${v.name}`); // 새가족만 추출
+                        pNames1.push(...v1_rep);
+                        totalAllDepts += (pNames1.length - v1_rep.length) + allV1.length;
+                    } else {
+                        totalAllDepts += pNames1.length;
+                    }
+                    let count1 = (dataAll['대예배'] && dataAll['대예배']['1부'] ? Object.keys(dataAll['대예배']['1부'].present || {}).length : 0) + (dataAll['대예배'] && dataAll['대예배'].visitors ? dataAll['대예배'].visitors.filter(v=>v.service===1).length : 0);
 
-                    // 2부 데이터 파싱
                     let pNames2 = [], v2_rep = [];
                     if(dataAll['대예배'] && dataAll['대예배']['2부']) pNames2 = Object.keys(dataAll['대예배']['2부'].present || {});
-                    if(dataAll['대예배'] && dataAll['대예배'].visitors) v2_rep = dataAll['대예배'].visitors.filter(v=>v.service===2).map(v=>`[방]${v.name}`);
-                    let count2 = pNames2.length + v2_rep.length;
-                    pNames2.push(...v2_rep);
-                    totalAllDepts += count2;
+                    if(dataAll['대예배'] && dataAll['대예배'].visitors) {
+                        const allV2 = dataAll['대예배'].visitors.filter(v=>v.service===2);
+                        v2_rep = allV2.filter(v=>v.type === 'new').map(v=>`[방]${v.name}`); // 새가족만 추출
+                        pNames2.push(...v2_rep);
+                        totalAllDepts += (pNames2.length - v2_rep.length) + allV2.length;
+                    } else {
+                        totalAllDepts += pNames2.length;
+                    }
+                    let count2 = (dataAll['대예배'] && dataAll['대예배']['2부'] ? Object.keys(dataAll['대예배']['2부'].present || {}).length : 0) + (dataAll['대예배'] && dataAll['대예배'].visitors ? dataAll['대예배'].visitors.filter(v=>v.service===2).length : 0);
 
-                    // 🚨 1부/2부 병합 및 결석자 표기
                     tbodyHtml3 += `
                         <tr class="border-b border-slate-300">
                             <td class="py-2 px-2 bg-slate-50 border-r border-slate-300 w-[12%] text-center font-black text-slate-700">1부(대예배)</td>
@@ -636,30 +692,43 @@
                         </tr>
                     `;
 
-                    // 부서 데이터 파싱
                     const depts = ['청년부', '중고등부', '유초등부', '유치부']; 
                     for (const dept of depts) { 
                         let count=0, pNames=[], aNames=[];
                         if(dataAll[dept]) { 
                             count = dataAll[dept].total_snapshot || 0;
-                            // V7.2 구조 대응 (present_list)
-                            if(dataAll[dept].present_list) {
-                                pNames = Object.keys(dataAll[dept].present_list);
-                                if(dataAll[dept].visitorsNew) pNames.push(...dataAll[dept].visitorsNew.map(v=>`[방]${v.name}`));
-                            } else if(dataAll[dept].present) { // 구버전 fallback
-                                pNames = Object.keys(dataAll[dept].present);
-                            } else if(count > 0) {
-                                pNames = ["*장부 참조(명단미제출)"];
-                            } else {
-                                pNames = ["-"];
-                            }
                             
-                            // 부서별 결석자 DB에서 자동 로딩
-                            const absSnap = await db.ref(`attendance/${dateStr}/absentees_${dept}`).once('value');
-                            const absData = absSnap.val();
-                            if(absData) {
-                                aNames = Object.keys(absData);
+                            let presentKeys = [];
+                            if(dataAll[dept].present_list) presentKeys = Object.keys(dataAll[dept].present_list);
+                            else if(dataAll[dept].present) presentKeys = Object.keys(dataAll[dept].present);
+                            
+                            if(presentKeys.length > 0 || count > 0) {
+                                pNames = [...presentKeys];
+                                if(dataAll[dept].visitorsNew) pNames.push(...dataAll[dept].visitorsNew.map(v=>`[방]${v.name}`));
+                                
+                                let deptAllMembers = new Set();
+                                Object.keys(allMembersData).forEach(groupKey => {
+                                    if (groupKey === dept || groupKey.startsWith(dept + "_")) {
+                                        (allMembersData[groupKey] || []).forEach(n => deptAllMembers.add(n));
+                                        const prefix = dept + "_";
+                                        if(groupKey.startsWith(prefix)) {
+                                            const parts = groupKey.substring(prefix.length).split('_');
+                                            if(parts.length > 1) {
+                                                const teachers = parts.slice(1).join('_').split(',');
+                                                teachers.forEach(t => { if(t.trim()) deptAllMembers.add(t.trim()); });
+                                            }
+                                        }
+                                    }
+                                });
+                                
+                                deptAllMembers.forEach(n => {
+                                    if(!presentKeys.includes(n)) aNames.push(n);
+                                });
+                                
+                                if(aNames.length === 0) aNames = ["결석자 없음"];
+                                
                             } else {
+                                pNames = ["*장부 참조(명단미제출)"];
                                 aNames = ["*장부 참조(명단미제출)"];
                             }
                         } else {
@@ -744,7 +813,6 @@
                                     const meta = chartInstance.getDatasetMeta(0);
                                     const yAxis = chartInstance.scales.y;
                                     
-                                    // 🚨 300명 점선 및 텍스트 마법!
                                     if (yAxis.max >= 300) {
                                         const y300 = yAxis.getPixelForValue(300);
                                         ctx.save();
@@ -764,7 +832,6 @@
                                         ctx.restore();
                                     }
 
-                                    // 🚨 막대 위 숫자 표시 마법!
                                     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.font = 'bold 13px "Noto Sans KR"'; 
                                     chartInstance.data.datasets[0].data.forEach(function(val, i) { 
                                         const bar = meta.data[i]; 
