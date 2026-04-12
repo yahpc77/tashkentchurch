@@ -13,6 +13,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-check.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
@@ -184,6 +185,8 @@
         const historyData = { '1부': [52, 50, 59], '2부': [114, 96, 94], '청년부': [38, 33, 36], '중고등부': [59, 53, 55], '유초등부': [32, 30, 29], '유치부': [4, 3, 4] };
         const firebaseConfig = { databaseURL: "https://tashkent-church-default-rtdb.firebaseio.com" };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const appCheck = firebase.appCheck();
+appCheck.activate('6LeRMbMsAAAAAGZEtFWFADSNsNrv2gFeXVeOQBlg', true);
         const db = firebase.database();
         
         let currentMode = 1; 
