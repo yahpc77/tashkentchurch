@@ -205,11 +205,13 @@
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            padding: 1rem;
+            box-sizing: border-box;
         }
 
         .pin-logo {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+            font-size: 2.2rem;
+            margin-bottom: .4rem;
             animation: float 3s ease-in-out infinite;
         }
 
@@ -221,7 +223,7 @@
             }
 
             50% {
-                transform: translateY(-8px);
+                transform: translateY(-5px);
             }
         }
 
@@ -229,39 +231,40 @@
             background: rgba(255, 255, 255, .12);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, .25);
-            border-radius: 1.5rem;
-            padding: 2rem 1.75rem;
+            border-radius: 1.25rem;
+            padding: 1.15rem 1.25rem 1rem;
             width: 100%;
-            max-width: 360px;
+            max-width: 320px;
             text-align: center;
             box-shadow: 0 25px 50px rgba(0, 0, 0, .35);
+            box-sizing: border-box;
         }
 
         .pin-title {
             color: #fff;
-            font-size: 1.3rem;
+            font-size: 1.15rem;
             font-weight: 900;
-            margin-bottom: .2rem;
+            margin-bottom: .1rem;
             letter-spacing: -.5px;
         }
 
         .pin-subtitle {
-            color: rgba(255, 255, 255, .55);
-            font-size: .8rem;
+            color: rgba(255, 255, 255, .65);
+            font-size: .78rem;
             font-weight: 600;
-            margin-bottom: 2rem;
+            margin-bottom: .75rem;
         }
 
         .pin-dots {
             display: flex;
             justify-content: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            gap: .75rem;
+            margin-bottom: .75rem;
         }
 
         .pin-dot {
-            width: 16px;
-            height: 16px;
+            width: 13px;
+            height: 13px;
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, .4);
             background: transparent;
@@ -271,23 +274,23 @@
         .pin-dot.filled {
             background: #fff;
             border-color: #fff;
-            box-shadow: 0 0 12px rgba(255, 255, 255, .6);
+            box-shadow: 0 0 10px rgba(255, 255, 255, .6);
         }
 
         .pin-keypad {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: .6rem;
-            margin-bottom: 1rem;
+            gap: .4rem;
+            margin-bottom: .6rem;
         }
 
         .pin-key {
             background: rgba(255, 255, 255, .15);
             color: #fff;
             border: 1px solid rgba(255, 255, 255, .25);
-            border-radius: .8rem;
-            padding: .9rem .5rem;
-            font-size: 1.4rem;
+            border-radius: .7rem;
+            padding: .55rem .4rem;
+            font-size: 1.25rem;
             font-weight: 900;
             cursor: pointer;
             transition: transform .1s, background .1s;
@@ -305,29 +308,50 @@
 
         .pin-confirm-btn {
             width: 100%;
-            padding: 1rem;
+            padding: .65rem;
             background: #fff;
             color: #1e3a8a;
-            font-size: 1rem;
+            font-size: .92rem;
             font-weight: 900;
-            border-radius: .9rem;
+            border-radius: .7rem;
             cursor: pointer;
             border: none;
             box-shadow: 0 4px 15px rgba(0, 0, 0, .2);
             transition: transform .1s, box-shadow .1s;
             font-family: 'Noto Sans KR', sans-serif;
+            display: block;
         }
 
         .pin-confirm-btn:active {
             transform: scale(.97);
         }
 
+        #admin-login-btn {
+            width: 100%;
+            margin-top: .45rem;
+            background: rgba(255, 255, 255, .1);
+            color: rgba(255, 255, 255, .85);
+            border: 1px solid rgba(255, 255, 255, .25);
+            border-radius: .7rem;
+            padding: .6rem;
+            font-size: .82rem;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: 'Noto Sans KR', sans-serif;
+            transition: background .15s;
+            display: block;
+        }
+
+        #admin-login-btn:active {
+            background: rgba(255, 255, 255, .22);
+        }
+
         .pin-error {
             color: #fca5a5;
-            font-size: .82rem;
+            font-size: .78rem;
             font-weight: 700;
-            margin-top: .75rem;
-            min-height: 1.2em;
+            margin-top: .35rem;
+            min-height: 1.1em;
         }
 
         .hidden {
@@ -667,24 +691,6 @@
             font-size: 10px;
             color: #64748b;
             font-weight: 700;
-        }
-
-        #admin-login-btn {
-            margin-top: 1.25rem;
-            background: rgba(255, 255, 255, .08);
-            color: rgba(255, 255, 255, .7);
-            border: 1px solid rgba(255, 255, 255, .2);
-            border-radius: .9rem;
-            padding: .75rem 1.5rem;
-            font-size: .82rem;
-            font-weight: 800;
-            cursor: pointer;
-            font-family: 'Noto Sans KR', sans-serif;
-            transition: background .15s;
-        }
-
-        #admin-login-btn:active {
-            background: rgba(255, 255, 255, .18);
         }
 
         /* 상세 명부 뷰 */
@@ -1043,7 +1049,7 @@
     </style>
 </head>
 
-<body class="pb-28 text-slate-800">
+<body class="text-slate-800">
 
     <!-- PIN 로그인 화면 -->
     <div id="pin-screen">
@@ -1071,16 +1077,16 @@
                 <button class="pin-key" id="pin-delete-btn">⌫</button>
             </div>
             <button class="pin-confirm-btn" id="pin-confirm-btn">🔓 입장하기</button>
+            <button type="button" id="admin-login-btn">🔐 관리자 로그인</button>
             <p class="pin-error" id="pin-error-msg"></p>
         </div>
-        <button type="button" id="admin-login-btn">🔐 관리자 로그인</button>
     </div>
 
     <!-- 메인 앱 -->
-    <div id="main-app" style="display:none;">
+    <div id="main-app" class="pb-28" style="display:none;">
         <div class="bg-white shadow-sm px-3 py-3 border-b-4 border-indigo-700">
             <div class="flex justify-between items-center mb-3">
-                <h1 class="text-lg font-black text-indigo-900 tracking-tight section-title">⛪ 푸른 청년부 V7.2</h1>
+                <h1 class="text-lg font-black text-indigo-900 tracking-tight section-title">⛪ 푸른 청년부 V7.3</h1>
                 <input type="date" id="today-date"
                     class="text-sm font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded border border-gray-300 outline-none">
             </div>
