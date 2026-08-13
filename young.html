@@ -15,7 +15,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="ocrHelper.js"></script>
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -113,8 +116,42 @@
         #report-modal,
         #absentee-modal,
         #report-view,
-        #reason-select-modal {
+        #reason-select-modal,
+        #member-memo-modal {
             display: none;
+        }
+
+        .member-btn.has-memo {
+            position: relative;
+            padding-top: .45rem;
+            padding-bottom: .45rem;
+        }
+
+        .member-btn .memo-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 9px;
+            line-height: 1;
+            opacity: .85;
+        }
+
+        .member-btn .memo-preview {
+            display: block;
+            font-size: 8px;
+            font-weight: 600;
+            opacity: .75;
+            margin-top: 1px;
+            line-height: 1.1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+
+        #memo-textarea {
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         #report-container {
@@ -332,6 +369,9 @@
             #report-modal,
             #absentee-modal,
             #reason-select-modal,
+            #member-memo-modal,
+            #roster-app,
+            #roster-detail-view,
             .no-print {
                 display: none !important;
             }
@@ -356,6 +396,649 @@
                 transform: none !important;
                 margin: 0 !important;
             }
+        }
+
+        /* ── 청년부 명부 (관리자 전용, 기존 출석부와 완전 분리) ── */
+        #roster-app,
+        #roster-detail-view {
+            display: none;
+        }
+
+        #roster-app {
+            min-height: 100vh;
+            background: #0b0c14;
+            color: #e2e8f0;
+            padding-bottom: 80px;
+        }
+
+        #roster-app .roster-topbar {
+            padding: 16px;
+            border-bottom: 1px solid #1e293b;
+            background: #0f1019;
+        }
+
+        #roster-app .roster-title {
+            font-size: 1.1rem;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+
+        #roster-app .roster-search {
+            width: 100%;
+            background: #1a1b26;
+            border: 1px solid #2d2f45;
+            border-radius: 12px;
+            padding: 12px 14px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        #roster-app .roster-search:focus {
+            border-color: #6366f1;
+        }
+
+        #roster-app .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        #roster-app .filter-label {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        #roster-app .filter-chip {
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            border: 1px solid #2d2f45;
+            background: #1a1b26;
+            color: #94a3b8;
+            cursor: pointer;
+        }
+
+        #roster-app .filter-chip.active {
+            background: #4338ca;
+            border-color: #6366f1;
+            color: #fff;
+        }
+
+        #roster-app .roster-count {
+            margin-left: auto;
+            font-size: 12px;
+            font-weight: 800;
+            color: #64748b;
+        }
+
+        #roster-app .roster-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        #roster-app .roster-action-btn {
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            border: 1px solid #334155;
+            background: #1a1b26;
+            color: #cbd5e1;
+        }
+
+        #roster-app .roster-action-btn.logout {
+            border-color: #7f1d1d;
+            color: #fca5a5;
+        }
+
+        #roster-app .roster-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            padding: 16px;
+        }
+
+        @media (min-width: 768px) {
+            #roster-app .roster-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            #roster-app .roster-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        #roster-app .roster-card {
+            background: #1a1b26;
+            border: 1px solid #2d2f45;
+            border-radius: 16px;
+            padding: 16px;
+            cursor: pointer;
+            transition: transform .12s, border-color .12s;
+        }
+
+        #roster-app .roster-card:active {
+            transform: scale(.98);
+        }
+
+        #roster-app .roster-card:hover {
+            border-color: #4338ca;
+        }
+
+        #roster-app .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        #roster-app .card-name-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        #roster-app .card-name {
+            font-size: 16px;
+            font-weight: 900;
+            color: #fff;
+        }
+
+        #roster-app .card-meta {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        #roster-app .card-location {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #312e81;
+            color: #c7d2fe;
+            white-space: nowrap;
+        }
+
+        #roster-app .card-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        #roster-app .card-tag {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: #4c1d95;
+            color: #e9d5ff;
+        }
+
+        #roster-app .card-tag.gray {
+            background: #334155;
+            color: #cbd5e1;
+        }
+
+        #roster-app .card-tag.blue {
+            background: #1e3a8a;
+            color: #bfdbfe;
+        }
+
+        #roster-app .attendance-signal-wrap {
+            background: #12121b;
+            border-radius: 12px;
+            padding: 10px 8px;
+            margin-bottom: 10px;
+        }
+
+        #roster-app .attendance-signal-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        #roster-app .signal-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #roster-app .signal-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+        }
+
+        #roster-app .signal-dot.present {
+            background: #10B981;
+            box-shadow: 0 0 6px rgba(16, 185, 129, .5);
+        }
+
+        #roster-app .signal-dot.absent {
+            background: #EF4444;
+            box-shadow: 0 0 6px rgba(239, 68, 68, .4);
+        }
+
+        #roster-app .signal-dot.unknown {
+            background: #475569;
+        }
+
+        #roster-app .signal-date {
+            font-size: 9px;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        #roster-app .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        #roster-app .card-phone {
+            color: #818cf8;
+            font-weight: 700;
+        }
+
+        #roster-app .card-phone.empty {
+            color: #475569;
+        }
+
+        #roster-app .card-family-btn {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        #admin-login-btn {
+            margin-top: 1.25rem;
+            background: rgba(255, 255, 255, .08);
+            color: rgba(255, 255, 255, .7);
+            border: 1px solid rgba(255, 255, 255, .2);
+            border-radius: .9rem;
+            padding: .75rem 1.5rem;
+            font-size: .82rem;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: 'Noto Sans KR', sans-serif;
+            transition: background .15s;
+        }
+
+        #admin-login-btn:active {
+            background: rgba(255, 255, 255, .18);
+        }
+
+        /* 상세 명부 뷰 */
+        #roster-detail-view {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: #0b0c14;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #roster-detail-view .detail-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #1e293b;
+            background: #0f1019;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        #roster-detail-view .detail-back {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        #roster-detail-view .detail-edit-btn {
+            background: #1a1b26;
+            border: 1px solid #4338ca;
+            color: #a5b4fc;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        #roster-detail-view .detail-body {
+            padding: 16px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        #roster-detail-view .detail-section-title {
+            font-size: 18px;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+
+        #roster-detail-view .detail-card {
+            background: #1a1b26;
+            border: 1px solid #2d2f45;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        #roster-detail-view .detail-subtitle {
+            font-size: 13px;
+            font-weight: 900;
+            color: #a5b4fc;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #roster-detail-view .detail-subtitle::before {
+            content: '';
+            width: 3px;
+            height: 14px;
+            background: #6366f1;
+            border-radius: 2px;
+        }
+
+        #roster-detail-view .profile-photo-box {
+            width: 100%;
+            max-width: 200px;
+            height: 160px;
+            background: #12121b;
+            border: 1px dashed #334155;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #475569;
+            font-size: 40px;
+            margin: 0 auto 16px;
+            overflow: hidden;
+        }
+
+        #roster-detail-view .profile-photo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #roster-detail-view .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 480px) {
+            #roster-detail-view .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        #roster-detail-view .info-field label {
+            display: block;
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        #roster-detail-view .info-field .info-value {
+            font-size: 14px;
+            font-weight: 800;
+            color: #f1f5f9;
+            min-height: 20px;
+        }
+
+        #roster-detail-view .info-field input,
+        #roster-detail-view .info-field textarea,
+        #roster-detail-view .info-field select {
+            width: 100%;
+            background: #12121b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+            display: none;
+        }
+
+        #roster-detail-view.editing .info-field input,
+        #roster-detail-view.editing .info-field textarea,
+        #roster-detail-view.editing .info-field select {
+            display: block;
+        }
+
+        #roster-detail-view.editing .info-field .info-value {
+            display: none;
+        }
+
+        #roster-detail-view .detail-save-btn {
+            width: 100%;
+            background: #4338ca;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-weight: 900;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 12px;
+            display: none;
+        }
+
+        #roster-detail-view.editing .detail-save-btn {
+            display: block;
+        }
+
+        #roster-detail-view .memo-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        #roster-detail-view .memo-save-btn {
+            background: #4338ca;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        #roster-detail-view .memo-textarea {
+            width: 100%;
+            background: #12121b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 12px;
+            color: #e2e8f0;
+            font-size: 13px;
+            font-weight: 600;
+            min-height: 80px;
+            resize: vertical;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+            margin-bottom: 12px;
+        }
+
+        #roster-detail-view .memo-log-list {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        #roster-detail-view .memo-log-item {
+            background: #12121b;
+            border: 1px solid #2d2f45;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+
+        #roster-detail-view .memo-log-meta {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        #roster-detail-view .memo-log-content {
+            font-size: 13px;
+            color: #e2e8f0;
+            font-weight: 600;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        #roster-detail-view .memo-log-empty {
+            text-align: center;
+            color: #475569;
+            font-size: 12px;
+            padding: 20px;
+        }
+
+        #roster-detail-view .card-viewer-section {
+            margin-top: 8px;
+        }
+
+        #roster-detail-view .card-viewer-wrap {
+            background: #12121b;
+            border: 1px solid #2d2f45;
+            border-radius: 12px;
+            overflow: hidden;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #roster-detail-view .card-viewer-wrap img {
+            max-width: 100%;
+            transform-origin: center center;
+            transition: transform .2s;
+        }
+
+        #roster-detail-view .card-viewer-empty {
+            color: #475569;
+            font-size: 13px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        #roster-detail-view .viewer-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        #roster-detail-view .viewer-controls button {
+            background: #1a1b26;
+            border: 1px solid #334155;
+            color: #cbd5e1;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        #roster-detail-view .card-upload-btn {
+            display: inline-block;
+            margin-top: 10px;
+            background: #1e293b;
+            border: 1px dashed #475569;
+            color: #94a3b8;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        #roster-detail-view .detail-attendance-row {
+            margin-bottom: 16px;
+        }
+
+        #roster-detail-view .attendance-signal-wrap {
+            background: #12121b;
+            border-radius: 12px;
+            padding: 10px 8px;
+        }
+
+        #roster-detail-view .attendance-signal-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        #roster-detail-view .signal-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        #roster-detail-view .signal-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+        }
+
+        #roster-detail-view .signal-dot.present {
+            background: #10B981;
+            box-shadow: 0 0 6px rgba(16, 185, 129, .5);
+        }
+
+        #roster-detail-view .signal-dot.absent {
+            background: #EF4444;
+            box-shadow: 0 0 6px rgba(239, 68, 68, .4);
+        }
+
+        #roster-detail-view .signal-dot.unknown {
+            background: #475569;
+        }
+
+        #roster-detail-view .signal-date {
+            font-size: 9px;
+            color: #64748b;
+            font-weight: 700;
         }
     </style>
 </head>
@@ -390,6 +1073,7 @@
             <button class="pin-confirm-btn" id="pin-confirm-btn">🔓 입장하기</button>
             <p class="pin-error" id="pin-error-msg"></p>
         </div>
+        <button type="button" id="admin-login-btn">🔐 관리자 로그인</button>
     </div>
 
     <!-- 메인 앱 -->
@@ -504,6 +1188,251 @@
         </div>
     </div>
 
+    <!-- 명단 메모 / 관리 모달 (롱클릭) -->
+    <div id="member-memo-modal"
+        class="fixed inset-0 bg-black bg-opacity-75 z-[70] flex justify-center items-end p-0 sm:items-center sm:p-4">
+        <div class="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl pb-10 sm:pb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-xl font-black text-indigo-900" id="memo-target-name">홍길동</h2>
+                <button onclick="closeMemberMemoModal()"
+                    class="bg-gray-100 text-gray-500 px-3 py-1 rounded-lg font-bold text-sm">닫기</button>
+            </div>
+            <p class="text-[11px] text-slate-500 mb-3">결석 사유, 기도제목, 특이사항 등을 기록하세요.</p>
+            <textarea id="memo-textarea" rows="4" placeholder="메모를 입력하세요..."
+                class="w-full border-2 border-indigo-200 rounded-xl p-3 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 resize-none mb-4"></textarea>
+            <button onclick="saveMemberMemo()"
+                class="w-full bg-indigo-700 text-white py-3 rounded-xl font-black text-sm shadow-lg active:scale-95 mb-3">💾
+                메모 저장</button>
+            <div class="flex gap-2 pt-3 border-t border-slate-200">
+                <button onclick="deleteMemberMemo()"
+                    class="flex-1 bg-amber-50 border border-amber-300 text-amber-800 py-3 rounded-xl font-black text-xs active:scale-95">🗑️
+                    메모 삭제</button>
+                <button onclick="confirmDeleteMemberFromModal()"
+                    class="flex-1 bg-red-50 border border-red-300 text-red-700 py-3 rounded-xl font-black text-xs active:scale-95">🚨
+                    명단 삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OCR 명단 스캔 및 결과 모달 -->
+    <div id="ocr-scan-modal"
+        class="fixed inset-0 bg-black bg-opacity-75 z-[75] flex justify-center items-end sm:items-center p-0 sm:p-4"
+        style="display:none;">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                <h2 class="text-lg font-black text-indigo-900 flex items-center gap-1.5">
+                    <span>📷 OCR AI 명단 스캔</span>
+                    <span class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">3.6
+                        Flash</span>
+                </h2>
+                <button onclick="closeOcrScanModal()" class="text-gray-400 font-bold text-xl">&times;</button>
+            </div>
+
+            <!-- 스캔 컨트롤 (파일 선택 / 카메라) -->
+            <div class="space-y-3 mb-3">
+                <div class="flex gap-2">
+                    <label
+                        class="flex-1 bg-indigo-50 border-2 border-dashed border-indigo-300 rounded-xl p-3 text-center cursor-pointer hover:bg-indigo-100 transition active:scale-95 flex items-center justify-center gap-2">
+                        <span class="text-lg">📁</span>
+                        <span class="text-xs font-black text-indigo-800">이미지 선택 / 촬영</span>
+                        <input type="file" id="ocr-file-input" accept="image/*" class="hidden"
+                            onchange="handleOcrFileSelected(event)">
+                    </label>
+                </div>
+                <!-- 미리보기 이미지 -->
+                <div id="ocr-preview-container"
+                    class="hidden bg-slate-100 border border-slate-300 rounded-xl p-2 text-center max-h-40 overflow-hidden relative">
+                    <img id="ocr-image-preview" src="" alt="스캔 대상 이미지"
+                        class="max-h-36 mx-auto object-contain rounded-lg">
+                    <button onclick="resetOcrImage()"
+                        class="absolute top-3 right-3 bg-black bg-opacity-60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">&times;</button>
+                </div>
+            </div>
+
+            <!-- 처리 상태 표시 및 버튼 -->
+            <div class="mb-3">
+                <button id="ocr-start-btn" onclick="startOcrAnalysis()" disabled
+                    class="w-full bg-indigo-700 text-white py-3 rounded-xl font-black text-sm shadow-md disabled:bg-slate-300 disabled:shadow-none active:scale-95 flex items-center justify-center gap-2">
+                    🚀 AI 명단 분석 실행
+                </button>
+                <div id="ocr-status-box"
+                    class="hidden mt-2 p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-center">
+                    <p id="ocr-status-text" class="text-xs font-black text-indigo-900">🤖 AI 분석 준비 중...</p>
+                </div>
+            </div>
+
+            <!-- 분석 결과 표시 영역 -->
+            <div id="ocr-result-section"
+                class="hidden flex-1 overflow-hidden flex flex-col pt-2 border-t border-slate-200">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-xs font-black text-slate-700">
+                        인식된 명단 (<span id="ocr-found-count" class="text-indigo-600">0</span>명)
+                    </div>
+                    <div class="flex items-center gap-2 text-xs font-bold">
+                        <label class="cursor-pointer flex items-center gap-1 text-slate-600">
+                            <input type="checkbox" id="ocr-select-all" checked onchange="toggleOcrSelectAll(this)"
+                                class="rounded text-indigo-600">
+                            전체 선택
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 타겟 조(Group) 선택 -->
+                <div class="mb-3 flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                    <span class="text-xs font-black text-slate-700 whitespace-nowrap">등록할 조:</span>
+                    <select id="ocr-target-group-select"
+                        class="w-full bg-white border border-slate-300 rounded-lg p-1.5 text-xs font-black text-indigo-900 outline-none">
+                    </select>
+                </div>
+
+                <!-- 인원 리스트 -->
+                <div id="ocr-members-list"
+                    class="flex-1 overflow-y-auto space-y-2 pr-1 max-h-52 bg-slate-50 p-2 rounded-xl border border-slate-200 mb-3">
+                </div>
+
+                <!-- 하단 실행 액션 버튼들 -->
+                <div class="flex gap-2">
+                    <button onclick="applyOcrBatchAdd()"
+                        class="flex-1 bg-indigo-800 text-white py-3 rounded-xl font-black text-xs shadow active:scale-95 flex flex-col items-center justify-center">
+                        <span>📥 선택 인원 조에 등록</span>
+                        <span class="text-[10px] font-normal text-indigo-200">Firebase DB 추가</span>
+                    </button>
+                    <button onclick="applyOcrAttendanceCheck()"
+                        class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs shadow active:scale-95 flex flex-col items-center justify-center">
+                        <span>✅ 선택 인원 출석 체크</span>
+                        <span class="text-[10px] font-normal text-emerald-100">오늘 출석 반영</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 청년부 명부 (관리자 전용) -->
+    <div id="roster-app">
+        <div class="roster-topbar">
+            <div class="roster-title">⛪ 청년부 명부</div>
+            <input type="text" id="roster-search" class="roster-search" placeholder="🔍 성도 이름으로 검색...">
+            <div class="filter-row">
+                <span class="filter-label">거주지</span>
+                <button type="button" class="filter-chip active" data-residence="">전체</button>
+                <button type="button" class="filter-chip" data-residence="타슈켄트">타슈켄트</button>
+                <button type="button" class="filter-chip" data-residence="한국">한국</button>
+                <span class="roster-count" id="roster-count">0명</span>
+            </div>
+            <div class="roster-actions">
+                <button type="button" class="roster-action-btn" id="roster-ocr-btn" onclick="openOcrScanModal()"
+                    style="background:#4338ca;color:#fff;border:none">📷 OCR AI 명단 스캔</button>
+                <button type="button" class="roster-action-btn" id="roster-sync-btn">🔄 명단 동기화</button>
+                <button type="button" class="roster-action-btn logout" id="roster-logout-btn">🚪 로그아웃</button>
+            </div>
+        </div>
+        <div id="roster-grid" class="roster-grid"></div>
+    </div>
+
+    <!-- 개인 상세 명부 -->
+    <div id="roster-detail-view">
+        <div class="detail-topbar">
+            <button type="button" class="detail-back" id="detail-back-btn">← 목록으로</button>
+            <button type="button" class="detail-edit-btn" id="detail-edit-btn">✏️ 수정하기</button>
+        </div>
+        <div class="detail-body">
+            <h2 class="detail-section-title" id="detail-name-title">개인 상세 정보</h2>
+            <div class="detail-card">
+                <div class="detail-subtitle">기본 정보</div>
+                <div class="profile-photo-box" id="profile-photo-box">🖼️</div>
+                <div class="info-grid" id="detail-info-grid"></div>
+                <button type="button" class="detail-save-btn" id="detail-save-btn">💾 정보 저장</button>
+            </div>
+            <div class="detail-card detail-attendance-row">
+                <div class="detail-subtitle">최근 5주 출석</div>
+                <div class="attendance-signal-wrap">
+                    <div class="attendance-signal-row" id="detail-attendance-row"></div>
+                </div>
+            </div>
+            <div class="detail-card">
+                <div class="memo-section-header">
+                    <div class="detail-subtitle" style="margin-bottom:0">통로 메모</div>
+                    <button type="button" class="memo-save-btn" id="detail-memo-save-btn">저장</button>
+                </div>
+                <textarea id="detail-prayer-input" class="memo-textarea"
+                    placeholder="개인기도제목 — 기도제목을 입력하세요..."></textarea>
+                <textarea id="detail-visitation-input" class="memo-textarea"
+                    placeholder="심방 기록/정보 — 예) 2026-05-01: 봄 심방..."></textarea>
+                <div class="detail-subtitle" style="margin-top:16px">메모 기록 (누적)</div>
+                <div class="memo-log-list" id="detail-memo-log"></div>
+            </div>
+            <div class="detail-card card-viewer-section">
+                <div class="detail-subtitle">원본 교육 문서 보기</div>
+                <div class="card-viewer-wrap" id="card-viewer-wrap">
+                    <div class="card-viewer-empty">등록된 카드 이미지가 없습니다.</div>
+                </div>
+                <div class="viewer-controls">
+                    <button type="button" id="card-zoom-out">−</button>
+                    <span id="card-zoom-level"
+                        style="font-size:12px;font-weight:800;color:#94a3b8;min-width:40px;text-align:center">100%</span>
+                    <button type="button" id="card-zoom-in">+</button>
+                </div>
+                <div class="flex gap-2 flex-wrap mt-3">
+                    <label class="card-upload-btn" id="card-upload-label" style="margin-top:0">
+                        📷 등록카드 업로드
+                        <input type="file" id="card-upload-input" accept="image/*" style="display:none">
+                    </label>
+                    <button type="button" class="card-upload-btn" id="ocr-scan-btn"
+                        style="margin-top:0;background:#4338ca;color:#fff;border:none">
+                        🔍 등록카드 OCR 스캔
+                    </button>
+                </div>
+                <div id="ocr-status-msg"
+                    style="font-size:11px;font-weight:700;color:#818cf8;margin-top:8px;display:none"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OCR 결과 검토/확인 모달 -->
+    <div id="ocr-result-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-80 z-[11000] flex justify-center items-center p-4">
+        <div class="bg-[#12121b] border border-[#2d2f45] text-slate-100 w-full max-w-md rounded-2xl p-5 shadow-2xl">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-base font-black text-indigo-300">🔍 OCR 인식 결과 확인</h3>
+                <button type="button" onclick="closeOcrResultModal()"
+                    class="text-slate-400 font-bold text-lg">✕</button>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">이미지에서 인식된 필드입니다. 내용을 직접 확인 및 수정한 후 [필드 자동 입력]을 누르세요.</p>
+            <div class="space-y-3 text-xs font-bold mb-5">
+                <div>
+                    <label class="text-slate-400 block mb-1">성명</label>
+                    <input type="text" id="ocr-res-name"
+                        class="w-full bg-[#1a1b26] border border-[#334155] rounded-lg p-2.5 text-white outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-slate-400 block mb-1">생년월일 (YYYY-MM-DD)</label>
+                    <input type="text" id="ocr-res-birth"
+                        class="w-full bg-[#1a1b26] border border-[#334155] rounded-lg p-2.5 text-white outline-none focus:border-indigo-500"
+                        placeholder="YYYY-MM-DD">
+                </div>
+                <div>
+                    <label class="text-slate-400 block mb-1">연락처</label>
+                    <input type="text" id="ocr-res-phone"
+                        class="w-full bg-[#1a1b26] border border-[#334155] rounded-lg p-2.5 text-white outline-none focus:border-indigo-500"
+                        placeholder="01012345678">
+                </div>
+                <div>
+                    <label class="text-slate-400 block mb-1">주소</label>
+                    <input type="text" id="ocr-res-address"
+                        class="w-full bg-[#1a1b26] border border-[#334155] rounded-lg p-2.5 text-white outline-none focus:border-indigo-500"
+                        placeholder="주소">
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="closeOcrResultModal()"
+                    class="flex-1 bg-[#1a1b26] border border-[#334155] text-slate-300 py-3 rounded-xl font-black text-xs">취소</button>
+                <button type="button" onclick="applyOcrToForm()"
+                    class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-black text-xs shadow-lg active:scale-95">✅
+                    필드 입력 적용</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 인쇄용 뷰 -->
     <div id="report-view" class="bg-gray-200 min-h-screen w-full overflow-y-auto overflow-x-hidden">
         <div class="text-center py-6 no-print flex gap-3 justify-center w-full px-4 bg-slate-800 shadow-md">
@@ -533,6 +1462,618 @@
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.database();
         const auth = firebase.auth();
+        const storage = firebase.storage();
+        const functions = firebase.functions();
+
+        // ── 관리자 명부 모듈 (출석부와 분리) ─────────────────────
+        const ADMIN_EMAILS = ['yahpc100@gmail.com', 'Jcseason@gmail.com'];
+        let isCurrentAdmin = false;
+        let leaderAppInitialized = false;
+        let rosterMembersData = {};
+        let rosterWeeklyAttendance = [];
+        let rosterResidenceFilter = '';
+        let currentDetailMemberId = '';
+        let cardZoomLevel = 1;
+
+        function toMemberId(rosterName) {
+            return String(rosterName).replace(/[.#$/\[\]]/g, '_');
+        }
+
+        function stripRoleSuffix(name) {
+            return String(name).replace(/\(리더\)|\(부리더\)/g, '').trim();
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function formatMemoDate(iso) {
+            if (!iso) return '-';
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return iso;
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const h = String(d.getHours()).padStart(2, '0');
+            const min = String(d.getMinutes()).padStart(2, '0');
+            return y + '-' + m + '-' + day + ' ' + h + ':' + min;
+        }
+
+        function getLast5Sundays(refDateStr) {
+            let base;
+            if (refDateStr && typeof refDateStr === 'string' && refDateStr.includes('-')) {
+                const parts = refDateStr.split('-');
+                base = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 12, 0, 0);
+            } else if (document.getElementById('today-date')?.value) {
+                const parts = document.getElementById('today-date').value.split('-');
+                base = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 12, 0, 0);
+            } else {
+                base = new Date();
+                base.setHours(12, 0, 0, 0);
+            }
+            base.setDate(base.getDate() - base.getDay());
+            const weeks = [];
+            for (let i = 4; i >= 0; i--) {
+                const d = new Date(base);
+                d.setDate(d.getDate() - i * 7);
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                weeks.push({
+                    dateStr: y + '-' + m + '-' + day,
+                    label: m + '/' + day
+                });
+            }
+            return weeks;
+        }
+
+        function pushMemoToYouthLog(rosterName, content, writer) {
+            if (!content || !rosterName) return;
+            const memberId = toMemberId(rosterName);
+            db.ref('youth_members/' + memberId + '/memos').push({
+                date: new Date().toISOString(),
+                writer: writer || '리더',
+                content: content,
+                readStatus: false
+            });
+        }
+
+        window.adminGoogleLogin = async function () {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                await auth.signInWithPopup(provider);
+            } catch (err) {
+                console.error(err);
+                if (err.code !== 'auth/popup-closed-by-user') {
+                    alert('Google 로그인에 실패했습니다.');
+                }
+            }
+        };
+
+        async function loadRosterMembersFromFirebase() {
+            const snap = await db.ref('members').once('value');
+            const data = snap.val() || {};
+            const processed = {};
+            for (let k in data) {
+                if (k.startsWith(DEPT_NAME + '_')) {
+                    let arr = data[k] ? (Array.isArray(data[k]) ? data[k] : Object.values(data[k])) : [];
+                    processed[k] = sortMembers(arr);
+                }
+            }
+            return processed;
+        }
+
+        async function syncRosterToYouthMembers(membersObj) {
+            const updates = {};
+            for (const [groupKey, names] of Object.entries(membersObj)) {
+                for (const rosterName of names) {
+                    const memberId = toMemberId(rosterName);
+                    const profilePath = 'youth_members/' + memberId + '/profile';
+                    const existing = (await db.ref(profilePath).once('value')).val();
+                    if (!existing) {
+                        updates[profilePath] = {
+                            name: stripRoleSuffix(rosterName),
+                            gender: '',
+                            relation: '',
+                            phone: '',
+                            birthday: '',
+                            workplace: '',
+                            team: '청년부',
+                            residence: '',
+                            role: rosterName.includes('(리더)') ? '리더' : rosterName.includes('(부리더)') ? '부리더' : '성도',
+                            registeredDate: '',
+                            baptismDate: '',
+                            welcomeCenter: false,
+                            prayerRequest: '',
+                            visitationLog: '',
+                            registrationCardUrl: '',
+                            linkedRosterName: rosterName,
+                            groupKey: groupKey
+                        };
+                    } else if (!existing.linkedRosterName) {
+                        updates[profilePath + '/linkedRosterName'] = rosterName;
+                        updates[profilePath + '/groupKey'] = groupKey;
+                    }
+                }
+            }
+            if (Object.keys(updates).length > 0) {
+                await db.ref().update(updates);
+            }
+        }
+
+        async function buildWeeklyAttendanceCache() {
+            const sundays = getLast5Sundays();
+            const fetchPromises = sundays.map(async (s) => {
+                try {
+                    const snap = await db.ref('attendance/' + s.dateStr).once('value');
+                    const data = snap.val() || {};
+
+                    // 1. 청년부 출석 데이터
+                    const youthData = data[DEPT_NAME] || {};
+                    const youthPresentMap = youthData.present_list || youthData.present || {};
+                    const youthHasData = (youthData.total_snapshot > 0 || Object.keys(youthPresentMap).length > 0 || Boolean(youthData.present_list) || Boolean(youthData.present));
+
+                    // 2. 통합 출석 Map (청년부 + 대예배 전체 세부 노드 + 등록교인 등)
+                    const combinedPresentMap = {};
+                    for (const k of Object.keys(youthPresentMap)) {
+                        if (youthPresentMap[k]) combinedPresentMap[k] = true;
+                    }
+
+                    // 대예배 및 모든 하위 부서/그룹 노드 탐색 (1부, 2부, 등록교인, 직분자 등)
+                    let mainHasData = false;
+                    const collectPresent = (obj) => {
+                        if (!obj || typeof obj !== 'object') return;
+                        if (obj.present && typeof obj.present === 'object') {
+                            Object.keys(obj.present).forEach(n => {
+                                if (obj.present[n]) combinedPresentMap[n] = true;
+                            });
+                            if (Object.keys(obj.present).length > 0) mainHasData = true;
+                        }
+                        if (obj.present_list && typeof obj.present_list === 'object') {
+                            Object.keys(obj.present_list).forEach(n => {
+                                if (obj.present_list[n]) combinedPresentMap[n] = true;
+                            });
+                            if (Object.keys(obj.present_list).length > 0) mainHasData = true;
+                        }
+                        if (obj.manual_total > 0 || (Array.isArray(obj.visitors) && obj.visitors.length > 0)) {
+                            mainHasData = true;
+                        }
+                    };
+
+                    const mainData = data['대예배'] || {};
+                    collectPresent(mainData);
+                    Object.values(mainData).forEach(sub => collectPresent(sub));
+
+                    // 루트의 등록교인 또는 대예배 관련 노드 추가 수집
+                    Object.keys(data).forEach(rootKey => {
+                        if (rootKey !== DEPT_NAME && (rootKey.includes('등록교인') || rootKey.includes('대예배') || rootKey.includes('교인'))) {
+                            collectPresent(data[rootKey]);
+                        }
+                    });
+
+                    const hasData = snap.exists() && (youthHasData || mainHasData);
+
+                    return {
+                        label: s.label,
+                        dateStr: s.dateStr,
+                        presentMap: combinedPresentMap,
+                        hasData: hasData
+                    };
+                } catch (err) {
+                    console.error('[ 신호등 데이터 로딩 실패 ] ' + s.dateStr + ':', err);
+                    return { label: s.label, dateStr: s.dateStr, presentMap: {}, hasData: false };
+                }
+            });
+
+            return await Promise.all(fetchPromises);
+        }
+
+        function maskNameForLog(name) {
+            if (!name) return '***';
+            const str = String(name).trim();
+            if (str.length <= 1) return '*';
+            if (str.length === 2) return str[0] + '*';
+            return str[0] + '*'.repeat(str.length - 2) + str[str.length - 1];
+        }
+
+        function getMemberSignalWeeks(linkedRosterName, profileName = '') {
+            if ((!linkedRosterName && !profileName) || !Array.isArray(rosterWeeklyAttendance)) return [];
+            const targetName = linkedRosterName || profileName || '';
+            const cleanTarget = stripRoleSuffix(targetName);
+
+            const result = rosterWeeklyAttendance.map(w => {
+                const map = w.presentMap || {};
+                let isPresent = false;
+                if (map[targetName]) {
+                    isPresent = true;
+                } else if (cleanTarget && map[cleanTarget]) {
+                    isPresent = true;
+                } else if (cleanTarget) {
+                    for (const key of Object.keys(map)) {
+                        if (stripRoleSuffix(key) === cleanTarget && map[key]) {
+                            isPresent = true;
+                            break;
+                        }
+                    }
+                }
+                return {
+                    label: w.label,
+                    present: isPresent,
+                    hasData: Boolean(w.hasData)
+                };
+            });
+
+            console.log(`[신호등 디버그] 회원(${maskNameForLog(cleanTarget)}):`, result.map(r => `${r.label}:${r.hasData ? (r.present ? '출석' : '결석') : '미기록'}`).join(', '));
+            return result;
+        }
+
+        function renderSignalHtml(weeks) {
+            return weeks.map(w => {
+                const cls = w.hasData ? (w.present ? 'present' : 'absent') : 'unknown';
+                return '<div class="signal-item"><div class="signal-dot ' + cls + '"></div><span class="signal-date">' + w.label + '</span></div>';
+            }).join('');
+        }
+
+        function getFilteredRosterList() {
+            const keyword = (document.getElementById('roster-search')?.value || '').trim().toLowerCase();
+            let list = Object.entries(rosterMembersData).map(([id, data]) => ({ id, profile: data.profile || {}, memos: data.memos || {} }));
+            if (keyword) {
+                list = list.filter(m => {
+                    const p = m.profile;
+                    return (p.name || '').toLowerCase().includes(keyword) ||
+                        (p.linkedRosterName || '').toLowerCase().includes(keyword);
+                });
+            }
+            if (rosterResidenceFilter) {
+                list = list.filter(m => (m.profile.residence || '') === rosterResidenceFilter);
+            }
+
+            // 실시간 최신 members(allMembersObj) 매핑
+            const memberGroupMap = {};
+            const memberOrderMap = {};
+            if (typeof allMembersObj === 'object' && allMembersObj !== null) {
+                Object.entries(allMembersObj).forEach(([gKey, names]) => {
+                    if (Array.isArray(names)) {
+                        names.forEach((name, idx) => {
+                            const clean = stripRoleSuffix(name);
+                            memberGroupMap[name] = gKey;
+                            memberGroupMap[clean] = gKey;
+                            memberOrderMap[name] = idx;
+                            memberOrderMap[clean] = idx;
+                        });
+                    }
+                });
+            }
+
+            list.sort((a, b) => {
+                const pA = a.profile;
+                const pB = b.profile;
+                const nameA = pA.linkedRosterName || pA.name || '';
+                const nameB = pB.linkedRosterName || pB.name || '';
+                const cleanA = stripRoleSuffix(nameA);
+                const cleanB = stripRoleSuffix(nameB);
+
+                const groupA = memberGroupMap[nameA] || memberGroupMap[cleanA] || pA.groupKey || '청년부_99조';
+                const groupB = memberGroupMap[nameB] || memberGroupMap[cleanB] || pB.groupKey || '청년부_99조';
+
+                // 1. 조 번호 기준 정렬 (1조 -> 2조 -> ... -> 미분류)
+                const numA = (groupA.match(/\d+/) ? parseInt(groupA.match(/\d+/)[0], 10) : 999);
+                const numB = (groupB.match(/\d+/) ? parseInt(groupB.match(/\d+/)[0], 10) : 999);
+                if (numA !== numB) return numA - numB;
+                if (groupA !== groupB) return groupA.localeCompare(groupB, 'ko');
+
+                // 2. 조 내부 순서 (리더 -> 부리더 -> 일반조원 가나다순)
+                const orderA = memberOrderMap[nameA] ?? memberOrderMap[cleanA] ?? (pA.role === '리더' ? 0 : pA.role === '부리더' ? 1 : 2);
+                const orderB = memberOrderMap[nameB] ?? memberOrderMap[cleanB] ?? (pB.role === '리더' ? 0 : pB.role === '부리더' ? 1 : 2);
+                if (orderA !== orderB) return orderA - orderB;
+
+                // 3. 이름 가나다순
+                return (pA.name || '').localeCompare(pB.name || '', 'ko');
+            });
+
+            return list;
+        }
+
+        function renderRosterGrid() {
+            const grid = document.getElementById('roster-grid');
+            if (!grid) return;
+            const list = getFilteredRosterList();
+            document.getElementById('roster-count').textContent = list.length + '명';
+            if (list.length === 0) {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#64748b;padding:40px;font-weight:700">표시할 명부가 없습니다.</div>';
+                return;
+            }
+            grid.innerHTML = list.map(m => {
+                const p = m.profile;
+                const linked = p.linkedRosterName || p.name || '';
+                const weeks = getMemberSignalWeeks(linked, p.name);
+                const genderMeta = [p.gender, p.relation].filter(Boolean).join(', ') || '미입력';
+                const location = p.residence || '미입력';
+                const phone = p.phone || '';
+                const roleTag = p.role || '성도';
+                const teamTag = p.team || '청년부';
+                const welcomeTag = p.welcomeCenter ? '<span class="card-tag">웰컴센터</span>' : '';
+                const hasUnreadMemo = Object.values(m.memos || {}).some(memo => memo && memo.readStatus === false);
+                const unreadBadge = hasUnreadMemo ? '<span title="안 읽은 메모 있음" style="display:inline-flex;align-items:center;margin-left:4px;font-size:12px;cursor:pointer">📝</span>' : '';
+                return '<div class="roster-card" data-member-id="' + escapeHtml(m.id) + '">' +
+                    '<div class="card-header"><div><div class="card-name-row"><span class="card-name">' + escapeHtml(p.name || linked) + unreadBadge + '</span><span class="card-meta">👤 ' + escapeHtml(genderMeta) + '</span></div></div>' +
+                    '<span class="card-location">' + escapeHtml(location) + '</span></div>' +
+                    '<div class="card-tags"><span class="card-tag gray">' + escapeHtml(roleTag) + '</span><span class="card-tag blue">' + escapeHtml(teamTag) + '</span>' + welcomeTag + '</div>' +
+                    '<div class="attendance-signal-wrap"><div class="attendance-signal-row">' + renderSignalHtml(weeks) + '</div></div>' +
+                    '<div class="card-footer"><span class="card-phone' + (phone ? '' : ' empty') + '">' + (phone ? '📞 ' + escapeHtml(phone) : '연락처 없음') + '</span>' +
+                    '<span class="card-family-btn">가족 정보 (0)</span></div></div>';
+            }).join('');
+            grid.querySelectorAll('.roster-card').forEach(card => {
+                card.addEventListener('click', () => openRosterDetail(card.dataset.memberId));
+            });
+        }
+
+        async function loadYouthMembersData() {
+            const snap = await db.ref('youth_members').once('value');
+            rosterMembersData = snap.val() || {};
+        }
+
+        async function openRosterApp() {
+            document.getElementById('pin-screen').classList.add('hidden');
+            document.getElementById('main-app').style.display = 'none';
+            document.getElementById('report-view').style.display = 'none';
+            document.getElementById('roster-app').style.display = 'block';
+            document.getElementById('roster-detail-view').style.display = 'none';
+            document.body.style.background = '#0b0c14';
+            const membersObj = await loadRosterMembersFromFirebase();
+            await syncRosterToYouthMembers(membersObj);
+            rosterWeeklyAttendance = await buildWeeklyAttendanceCache();
+            await loadYouthMembersData();
+            renderRosterGrid();
+        }
+
+        function closeRosterApp() {
+            document.getElementById('roster-app').style.display = 'none';
+            document.getElementById('roster-detail-view').style.display = 'none';
+            document.body.style.background = '';
+        }
+
+        async function openRosterDetail(memberId) {
+            currentDetailMemberId = memberId;
+            cardZoomLevel = 1;
+            const snap = await db.ref('youth_members/' + memberId).once('value');
+            const data = snap.val() || {};
+            rosterMembersData[memberId] = data;
+            const p = data.profile || {};
+            document.getElementById('detail-name-title').textContent = p.name || '개인 상세 정보';
+            document.getElementById('roster-detail-view').classList.remove('editing');
+            document.getElementById('roster-detail-view').style.display = 'block';
+
+            // 미확인 메모 일괄 읽음 처리 (readStatus: true)
+            const memos = data.memos || {};
+            const unreadUpdates = {};
+            let hasUnread = false;
+            Object.entries(memos).forEach(([memoKey, memoVal]) => {
+                if (memoVal && memoVal.readStatus === false) {
+                    unreadUpdates['youth_members/' + memberId + '/memos/' + memoKey + '/readStatus'] = true;
+                    memoVal.readStatus = true;
+                    hasUnread = true;
+                }
+            });
+            if (hasUnread) {
+                db.ref().update(unreadUpdates).catch(err => console.error('읽음 처리 실패:', err));
+                renderRosterGrid();
+            }
+
+            // Ensure weekly attendance cache is loaded and up to date
+            if (!Array.isArray(rosterWeeklyAttendance) || rosterWeeklyAttendance.length === 0) {
+                rosterWeeklyAttendance = await buildWeeklyAttendanceCache();
+            }
+
+            const fields = [
+                { key: 'name', label: '이름' },
+                { key: 'relation', label: '관계' },
+                { key: 'role', label: '직분' },
+                { key: 'workplace', label: '회사/직장' },
+                { key: 'phone', label: '전화번호' },
+                { key: 'birthday', label: '생년월일' },
+                { key: 'registeredDate', label: '등록일' },
+                { key: 'baptismDate', label: '세례일' },
+                { key: 'gender', label: '성별' },
+                { key: 'team', label: '소속팀' },
+                { key: 'residence', label: '거주지' },
+                { key: 'address', label: '주소' }
+            ];
+            const grid = document.getElementById('detail-info-grid');
+            grid.innerHTML = fields.map(f => {
+                const val = p[f.key] || '';
+                const display = val || '-';
+                return '<div class="info-field"><label>' + f.label + '</label><div class="info-value">' + escapeHtml(display) + '</div>' +
+                    '<input type="text" data-field="' + f.key + '" value="' + escapeHtml(val) + '"></div>';
+            }).join('');
+
+            document.getElementById('detail-prayer-input').value = p.prayerRequest || '';
+            document.getElementById('detail-visitation-input').value = p.visitationLog || '';
+
+            const linked = p.linkedRosterName || p.name || '';
+            const signalWeeks = getMemberSignalWeeks(linked, p.name);
+            document.getElementById('detail-attendance-row').innerHTML = renderSignalHtml(signalWeeks);
+
+            renderDetailMemoLog(data.memos || {});
+            renderRegistrationCard(p.registrationCardUrl || '');
+
+            db.ref('youth_members/' + memberId + '/memos').off();
+            db.ref('youth_members/' + memberId + '/memos').on('value', snap => {
+                if (currentDetailMemberId === memberId) {
+                    renderDetailMemoLog(snap.val() || {});
+                    if (rosterMembersData[memberId]) rosterMembersData[memberId].memos = snap.val() || {};
+                }
+            });
+        }
+
+        function renderDetailMemoLog(memos) {
+            const container = document.getElementById('detail-memo-log');
+            const sorted = Object.entries(memos || {}).map(([id, m]) => ({ id, ...m }))
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+            if (sorted.length === 0) {
+                container.innerHTML = '<div class="memo-log-empty">누적된 메모 기록이 없습니다.</div>';
+                return;
+            }
+            container.innerHTML = sorted.map(m => {
+                const safeContent = escapeHtml(m.content);
+                const rawContent = (m.content || '').replace(/"/g, '&quot;');
+                return '<div class="memo-log-item">' +
+                    '<div class="flex justify-between items-center memo-log-meta" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+                    '<span>' + escapeHtml(formatMemoDate(m.date)) + ' | ' + escapeHtml(m.writer || '리더') + '</span>' +
+                    '<div style="display:flex;gap:6px">' +
+                    '<button type="button" onclick="editDetailMemo(\'' + m.id + '\', this)" data-content="' + rawContent + '" style="background:none;border:none;color:#818cf8;font-size:11px;font-weight:700;cursor:pointer;padding:0">✏️ 수정</button>' +
+                    '<button type="button" onclick="deleteDetailMemo(\'' + m.id + '\')" style="background:none;border:none;color:#f87171;font-size:11px;font-weight:700;cursor:pointer;padding:0">🗑️ 삭제</button>' +
+                    '</div></div>' +
+                    '<div class="memo-log-content">' + safeContent + '</div></div>';
+            }).join('');
+        }
+
+        window.editDetailMemo = async function (memoId, btnEl) {
+            if (!currentDetailMemberId || !isCurrentAdmin) {
+                alert('관리자 권한이 필요합니다.');
+                return;
+            }
+            const oldContent = btnEl ? btnEl.getAttribute('data-content') : '';
+            const newText = prompt('메모 내용을 수정하세요:', oldContent);
+            if (newText === null) return;
+            if (newText.trim() === '') {
+                if (confirm('메모 내용이 비어 있습니다. 메모를 삭제하시겠습니까?')) {
+                    await deleteDetailMemo(memoId);
+                }
+                return;
+            }
+            try {
+                await db.ref('youth_members/' + currentDetailMemberId + '/memos/' + memoId + '/content').set(newText.trim());
+                alert('✏️ 메모가 수정되었습니다.');
+            } catch (err) {
+                console.error('메모 수정 실패:', err);
+                alert('메모 수정에 실패했습니다.');
+            }
+        };
+
+        window.deleteDetailMemo = async function (memoId) {
+            if (!currentDetailMemberId || !isCurrentAdmin) {
+                alert('관리자 권한이 필요합니다.');
+                return;
+            }
+            if (!confirm('이 메모 기록을 삭제하시겠습니까?')) return;
+            try {
+                await db.ref('youth_members/' + currentDetailMemberId + '/memos/' + memoId).remove();
+                alert('🗑️ 메모가 삭제되었습니다.');
+            } catch (err) {
+                console.error('메모 삭제 실패:', err);
+                alert('메모 삭제에 실패했습니다.');
+            }
+        };
+
+        function renderRegistrationCard(url) {
+            const wrap = document.getElementById('card-viewer-wrap');
+            cardZoomLevel = 1;
+            document.getElementById('card-zoom-level').textContent = '100%';
+            if (url) {
+                wrap.innerHTML = '<img id="registration-card-img" src="' + escapeHtml(url) + '" alt="등록카드">';
+            } else {
+                wrap.innerHTML = '<div class="card-viewer-empty">등록된 카드 이미지가 없습니다.</div>';
+            }
+        }
+
+        function closeRosterDetail() {
+            if (currentDetailMemberId) {
+                db.ref('youth_members/' + currentDetailMemberId + '/memos').off();
+            }
+            currentDetailMemberId = '';
+            document.getElementById('roster-detail-view').style.display = 'none';
+        }
+
+        function toggleDetailEdit() {
+            const el = document.getElementById('roster-detail-view');
+            const editing = el.classList.toggle('editing');
+            document.getElementById('detail-edit-btn').textContent = editing ? '👁️ 보기' : '✏️ 수정하기';
+        }
+
+        async function saveDetailProfile() {
+            if (!currentDetailMemberId || !isCurrentAdmin) return;
+            const updates = {};
+            document.querySelectorAll('#detail-info-grid [data-field]').forEach(inp => {
+                updates['youth_members/' + currentDetailMemberId + '/profile/' + inp.dataset.field] = inp.value.trim();
+            });
+            updates['youth_members/' + currentDetailMemberId + '/profile/prayerRequest'] = document.getElementById('detail-prayer-input').value.trim();
+            updates['youth_members/' + currentDetailMemberId + '/profile/visitationLog'] = document.getElementById('detail-visitation-input').value.trim();
+            await db.ref().update(updates);
+            await loadYouthMembersData();
+            alert('💾 정보 저장 완료!');
+            document.getElementById('roster-detail-view').classList.remove('editing');
+            document.getElementById('detail-edit-btn').textContent = '✏️ 수정하기';
+            openRosterDetail(currentDetailMemberId);
+            renderRosterGrid();
+        }
+
+        async function saveDetailAdminMemo() {
+            if (!currentDetailMemberId || !isCurrentAdmin) return;
+            const prayer = document.getElementById('detail-prayer-input').value.trim();
+            const visitation = document.getElementById('detail-visitation-input').value.trim();
+            await db.ref('youth_members/' + currentDetailMemberId + '/profile').update({
+                prayerRequest: prayer,
+                visitationLog: visitation
+            });
+            alert('💾 메모 저장 완료!');
+            await loadYouthMembersData();
+        }
+
+        async function uploadRegistrationCard(file) {
+            if (!currentDetailMemberId || !file || !isCurrentAdmin) return;
+            const ext = file.name.split('.').pop() || 'jpg';
+            const ref = storage.ref('youth_cards/' + currentDetailMemberId + '.' + ext);
+            await ref.put(file);
+            const url = await ref.getDownloadURL();
+            await db.ref('youth_members/' + currentDetailMemberId + '/profile/registrationCardUrl').set(url);
+            renderRegistrationCard(url);
+            alert('📷 등록카드 업로드 완료!');
+        }
+
+        function setupCardZoom(delta) {
+            cardZoomLevel = Math.max(0.5, Math.min(3, cardZoomLevel + delta));
+            document.getElementById('card-zoom-level').textContent = Math.round(cardZoomLevel * 100) + '%';
+            const img = document.getElementById('registration-card-img');
+            if (img) img.style.transform = 'scale(' + cardZoomLevel + ')';
+        }
+
+        function setupRosterUI() {
+            document.getElementById('admin-login-btn')?.addEventListener('click', adminGoogleLogin);
+            document.getElementById('roster-logout-btn')?.addEventListener('click', () => {
+                if (confirm('로그아웃 하시겠습니까?')) auth.signOut();
+            });
+            document.getElementById('roster-sync-btn')?.addEventListener('click', async () => {
+                const membersObj = await loadRosterMembersFromFirebase();
+                await syncRosterToYouthMembers(membersObj);
+                rosterWeeklyAttendance = await buildWeeklyAttendanceCache();
+                await loadYouthMembersData();
+                renderRosterGrid();
+                alert('🔄 명단 동기화 완료!');
+            });
+            document.getElementById('roster-search')?.addEventListener('input', renderRosterGrid);
+            document.querySelectorAll('#roster-app .filter-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    document.querySelectorAll('#roster-app .filter-chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    rosterResidenceFilter = chip.dataset.residence || '';
+                    renderRosterGrid();
+                });
+            });
+            document.getElementById('detail-back-btn')?.addEventListener('click', closeRosterDetail);
+            document.getElementById('detail-edit-btn')?.addEventListener('click', toggleDetailEdit);
+            document.getElementById('detail-save-btn')?.addEventListener('click', saveDetailProfile);
+            document.getElementById('detail-memo-save-btn')?.addEventListener('click', saveDetailAdminMemo);
+            document.getElementById('card-zoom-in')?.addEventListener('click', () => setupCardZoom(0.1));
+            document.getElementById('card-zoom-out')?.addEventListener('click', () => setupCardZoom(-0.1));
+            document.getElementById('card-upload-input')?.addEventListener('change', e => {
+                if (e.target.files[0]) uploadRegistrationCard(e.target.files[0]);
+                e.target.value = '';
+            });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupRosterUI);
+        } else { setupRosterUI(); }
 
         // ── PIN 인증 ──────────────────────────────────────────────
         const CORRECT_PIN = '2301';
@@ -585,14 +2126,34 @@
         // 매 페이지 로드 시 강제 로그아웃 → PIN 화면을 항상 표시
         auth.signOut().then(() => {
             auth.onAuthStateChanged(user => {
-                if (user) {
-                    document.getElementById('pin-screen').classList.add('hidden');
-                    document.getElementById('main-app').style.display = 'block';
-                    initApp();
-                } else {
+                if (!user) {
+                    isCurrentAdmin = false;
+                    leaderAppInitialized = false;
+                    closeRosterApp();
                     document.getElementById('pin-screen').classList.remove('hidden');
                     document.getElementById('main-app').style.display = 'none';
                     pinValue = ''; updatePinDots();
+                    return;
+                }
+                if (user.isAnonymous) {
+                    isCurrentAdmin = false;
+                    document.getElementById('pin-screen').classList.add('hidden');
+                    document.getElementById('main-app').style.display = 'block';
+                    closeRosterApp();
+                    if (!leaderAppInitialized) {
+                        leaderAppInitialized = true;
+                        initApp();
+                    }
+                    return;
+                }
+                const email = (user.email || '').toLowerCase();
+                const allowed = ADMIN_EMAILS.map(e => e.toLowerCase());
+                if (allowed.includes(email)) {
+                    isCurrentAdmin = true;
+                    openRosterApp();
+                } else {
+                    alert('관리자 권한이 없는 계정입니다.\n허용된 관리자만 명부에 접근할 수 있습니다.');
+                    auth.signOut();
                 }
             });
         });
@@ -601,8 +2162,11 @@
         let allMembersObj = {}; let presentSet = new Set();
         let visitorsNew = []; let visitorsRecurring = [];
         let globalAbsenteeReasons = {};
+        let globalMemberMemos = {};
         let currentReportDetails = {};
         let currentReasonTarget = "";
+        let currentMemoTarget = "";
+        let currentMemoGroupKey = "";
 
         function sortMembers(arr) {
             return arr.sort((a, b) => {
@@ -627,6 +2191,9 @@
             });
             db.ref('global_absentee_reasons_' + DEPT_NAME).on('value', snap => {
                 globalAbsenteeReasons = snap.val() || {}; updateAbsenteeBadge();
+            });
+            db.ref('member_memos_' + DEPT_NAME).on('value', snap => {
+                globalMemberMemos = snap.val() || {}; renderLists();
             });
             document.getElementById('today-date').addEventListener('change', startAttendanceSync);
         }
@@ -692,15 +2259,64 @@
         }
 
         window.deleteMember = function (name, groupKey) {
+            if (!groupKey) groupKey = findGroupByName(name);
             if (!groupKey) return;
-            if (confirm('🚨 주의!\n[' + name + '] 성도를 조 명단에서 완전히 삭제하시겠습니까?')) {
+            if (confirm('🚨 주의!\n[' + name + '] 성도를 조 명단에서 완전히 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.')) {
                 let updatedArr = (allMembersObj[groupKey] || []).filter(n => n !== name);
                 db.ref('members/' + groupKey).set(updatedArr).then(() => {
-                    db.ref('attendance/' + document.getElementById('today-date').value + '/' + DEPT_NAME + '/present_list/' + name).remove();
+                    const dateStr = document.getElementById('today-date').value;
+                    db.ref('attendance/' + dateStr + '/' + DEPT_NAME + '/present_list/' + name).remove();
                     db.ref('global_absentee_reasons_' + DEPT_NAME + '/' + name).remove();
+                    db.ref('member_memos_' + DEPT_NAME + '/' + name).remove();
                     alert('🗑️ [' + name + '] 성도 삭제 완료!');
                 });
             }
+        };
+
+        window.openMemberMemoModal = function (name, groupKey) {
+            currentMemoTarget = name;
+            currentMemoGroupKey = groupKey || findGroupByName(name) || '';
+            document.getElementById('memo-target-name').innerText = name;
+            document.getElementById('memo-textarea').value = globalMemberMemos[name] || '';
+            document.getElementById('member-memo-modal').style.display = 'flex';
+        };
+        window.closeMemberMemoModal = function () {
+            document.getElementById('member-memo-modal').style.display = 'none';
+            currentMemoTarget = '';
+            currentMemoGroupKey = '';
+        };
+        window.saveMemberMemo = function () {
+            if (!currentMemoTarget) return;
+            const text = document.getElementById('memo-textarea').value.trim();
+            const ref = db.ref('member_memos_' + DEPT_NAME + '/' + currentMemoTarget);
+            if (text) {
+                ref.set(text).then(() => {
+                    pushMemoToYouthLog(currentMemoTarget, text, '리더');
+                    alert('💾 메모 저장 완료!'); closeMemberMemoModal();
+                });
+            } else {
+                if (confirm('메모 내용이 비어 있습니다.\n저장하면 기존 메모가 삭제됩니다. 계속하시겠습니까?')) {
+                    ref.remove().then(() => { alert('메모가 삭제되었습니다.'); closeMemberMemoModal(); });
+                }
+            }
+        };
+        window.deleteMemberMemo = function () {
+            if (!currentMemoTarget) return;
+            const hasMemo = !!(globalMemberMemos[currentMemoTarget] || document.getElementById('memo-textarea').value.trim());
+            if (!hasMemo) { alert('저장된 메모가 없습니다.'); return; }
+            if (confirm('[' + currentMemoTarget + ']의 메모를 삭제하시겠습니까?')) {
+                db.ref('member_memos_' + DEPT_NAME + '/' + currentMemoTarget).remove().then(() => {
+                    document.getElementById('memo-textarea').value = '';
+                    alert('🗑️ 메모 삭제 완료!');
+                });
+            }
+        };
+        window.confirmDeleteMemberFromModal = function () {
+            if (!currentMemoTarget) return;
+            const name = currentMemoTarget;
+            const groupKey = currentMemoGroupKey;
+            closeMemberMemoModal();
+            deleteMember(name, groupKey);
         };
         function renderLists() {
             const container = document.getElementById('members-container'); container.innerHTML = '';
@@ -708,11 +2324,50 @@
             const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
             const addLP = (btn, name, groupKey) => {
                 let pressTimer; let isLP = false;
-                const sp = () => { isLP = false; pressTimer = setTimeout(() => { isLP = true; deleteMember(name, groupKey || findGroupByName(name)); }, 800); };
+                const sp = () => {
+                    isLP = false;
+                    pressTimer = setTimeout(() => {
+                        isLP = true;
+                        if (navigator.vibrate) navigator.vibrate(30);
+                        openMemberMemoModal(name, groupKey);
+                    }, 500);
+                };
                 const cp = () => clearTimeout(pressTimer);
-                btn.addEventListener('touchstart', sp, { passive: true }); btn.addEventListener('touchend', cp); btn.addEventListener('touchmove', cp, { passive: true });
-                btn.addEventListener('mousedown', sp); btn.addEventListener('mouseup', cp); btn.addEventListener('mouseleave', cp);
-                btn.onclick = e => { if (isLP) { e.preventDefault(); return; } toggleAttendance(name); if (keyword) document.getElementById('search-input').value = ''; };
+                btn.addEventListener('touchstart', sp, { passive: true });
+                btn.addEventListener('touchend', cp);
+                btn.addEventListener('touchmove', cp, { passive: true });
+                btn.addEventListener('mousedown', sp);
+                btn.addEventListener('mouseup', cp);
+                btn.addEventListener('mouseleave', cp);
+                btn.addEventListener('contextmenu', e => e.preventDefault());
+                btn.onclick = e => {
+                    if (isLP) { e.preventDefault(); return; }
+                    toggleAttendance(name);
+                    if (keyword) document.getElementById('search-input').value = '';
+                };
+            };
+            const buildMemberBtnContent = (btn, name) => {
+                const memo = (globalMemberMemos[name] || '').trim();
+                btn.textContent = '';
+                if (memo) {
+                    btn.classList.add('has-memo');
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'block leading-tight';
+                    nameSpan.textContent = name;
+                    const badge = document.createElement('span');
+                    badge.className = 'memo-badge';
+                    badge.textContent = '📝';
+                    const preview = document.createElement('span');
+                    preview.className = 'memo-preview';
+                    preview.textContent = memo.length > 10 ? memo.slice(0, 10) + '…' : memo;
+                    preview.title = memo;
+                    btn.appendChild(nameSpan);
+                    btn.appendChild(badge);
+                    btn.appendChild(preview);
+                } else {
+                    btn.classList.remove('has-memo');
+                    btn.textContent = name;
+                }
             };
             groupKeys.forEach((groupKey, index) => {
                 let membersArr = allMembersObj[groupKey] || [];
@@ -725,7 +2380,9 @@
                 (keyword ? filteredMembers : membersArr).forEach(name => {
                     const isPresent = presentSet.has(name); const btn = document.createElement('button');
                     btn.className = 'member-btn w-full text-center tracking-tight leading-tight ' + (isPresent ? 'status-present' : 'status-absent') + (keyword && name.includes(keyword) ? ' highlight-search' : '');
-                    btn.textContent = name; addLP(btn, name, groupKey); grid.appendChild(btn);
+                    buildMemberBtnContent(btn, name);
+                    addLP(btn, name, groupKey);
+                    grid.appendChild(btn);
                 });
                 if (!keyword) { const addBtn = document.createElement('button'); addBtn.className = 'member-btn w-full add-btn flex items-center justify-center active:scale-90'; addBtn.textContent = '+'; addBtn.onclick = () => moveOrAddFriend(groupKey); grid.appendChild(addBtn); }
                 section.appendChild(grid); container.appendChild(section);
@@ -876,6 +2533,276 @@
         function scaleReport() { const container = document.getElementById('report-container'); const page = document.getElementById('a4-content'); const w = container.clientWidth; if (w < 820) { const scale = w / 820; page.style.transform = 'scale(' + scale + ')'; page.style.transformOrigin = 'top center'; container.style.height = (1123 * scale + 40) + 'px'; } else { page.style.transform = 'none'; container.style.height = 'auto'; } }
         function checkServerStatus() { document.getElementById('db-status').innerText = '🟢 서버 연동 완료! (' + (allMembersObj[Object.keys(allMembersObj)[0]]?.length || 0) + '명 로드됨)'; document.getElementById('db-status').className = 'text-[11px] font-bold text-green-600 mt-2 text-center'; }
         window.addEventListener('resize', () => { if (document.getElementById('report-view').style.display === 'block') scaleReport(); });
+
+        // ── OCR Controller Logic (관리자 전용) ─────────────────
+        let currentOcrFile = null;
+        let currentOcrBase64Data = null;
+        let currentOcrParsedMembers = [];
+
+        window.openOcrScanModal = function () {
+            if (!isCurrentAdmin) {
+                alert('🚨 권한 오류\nOCR 명단 스캔 기능은 관리자 로그인 상태에서만 이용하실 수 있습니다.');
+                return;
+            }
+            resetOcrModalState();
+            populateOcrGroupSelect();
+            document.getElementById('ocr-scan-modal').style.display = 'flex';
+        };
+
+        window.closeOcrScanModal = function () {
+            document.getElementById('ocr-scan-modal').style.display = 'none';
+        };
+
+        function resetOcrModalState() {
+            currentOcrFile = null;
+            currentOcrBase64Data = null;
+            currentOcrParsedMembers = [];
+            document.getElementById('ocr-file-input').value = '';
+            document.getElementById('ocr-preview-container').classList.add('hidden');
+            document.getElementById('ocr-image-preview').src = '';
+            document.getElementById('ocr-start-btn').disabled = true;
+            document.getElementById('ocr-status-box').classList.add('hidden');
+            document.getElementById('ocr-result-section').classList.add('hidden');
+            document.getElementById('ocr-members-list').innerHTML = '';
+        }
+
+        window.resetOcrImage = function () {
+            currentOcrFile = null;
+            currentOcrBase64Data = null;
+            document.getElementById('ocr-file-input').value = '';
+            document.getElementById('ocr-preview-container').classList.add('hidden');
+            document.getElementById('ocr-image-preview').src = '';
+            document.getElementById('ocr-start-btn').disabled = true;
+            document.getElementById('ocr-result-section').classList.add('hidden');
+        };
+
+        function populateOcrGroupSelect() {
+            const select = document.getElementById('ocr-target-group-select');
+            if (!select) return;
+            select.innerHTML = '';
+
+            const groupKeys = Object.keys(allMembersObj).sort((a, b) => a.localeCompare(b));
+            if (groupKeys.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = DEPT_NAME + '_1조';
+                opt.textContent = '1조';
+                select.appendChild(opt);
+                return;
+            }
+
+            groupKeys.forEach(groupKey => {
+                const opt = document.createElement('option');
+                opt.value = groupKey;
+                const label = groupKey.replace(DEPT_NAME + '_', '');
+                opt.textContent = label;
+                select.appendChild(opt);
+            });
+        }
+
+        window.handleOcrFileSelected = async function (e) {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            try {
+                currentOcrFile = file;
+                const { base64, mimeType } = await fileToBase64(file);
+                currentOcrBase64Data = { base64, mimeType };
+
+                const previewImg = document.getElementById('ocr-image-preview');
+                previewImg.src = URL.createObjectURL(file);
+                document.getElementById('ocr-preview-container').classList.remove('hidden');
+                document.getElementById('ocr-start-btn').disabled = false;
+                document.getElementById('ocr-result-section').classList.add('hidden');
+            } catch (err) {
+                alert('이미지 파일 변환 중 오류가 발생했습니다: ' + err.message);
+            }
+        };
+
+        window.startOcrAnalysis = async function () {
+            if (!isCurrentAdmin) {
+                alert('관리자 로그인 상태에서만 실행할 수 있습니다.');
+                return;
+            }
+            if (!currentOcrBase64Data) {
+                alert('분석할 이미지를 선택해 주세요.');
+                return;
+            }
+
+            const apiKey = firebaseConfig.apiKey;
+            const startBtn = document.getElementById('ocr-start-btn');
+            const statusBox = document.getElementById('ocr-status-box');
+            const statusText = document.getElementById('ocr-status-text');
+
+            startBtn.disabled = true;
+            statusBox.classList.remove('hidden');
+            document.getElementById('ocr-result-section').classList.add('hidden');
+
+            try {
+                const { result, usedModel } = await analyzeImageWithGeminiFallback(
+                    currentOcrBase64Data.base64,
+                    apiKey,
+                    currentOcrBase64Data.mimeType,
+                    (statusMsg) => {
+                        statusText.textContent = statusMsg;
+                    }
+                );
+
+                statusText.innerHTML = '🎉 <b class="text-indigo-700">' + usedModel + '</b> 분석 완료! 추출 인원: ' + (result.members?.length || 0) + '명';
+                currentOcrParsedMembers = result.members || [];
+                renderOcrParsedMembers(currentOcrParsedMembers);
+            } catch (err) {
+                console.error('[OCR Error]', err);
+                statusText.innerHTML = '❌ <b class="text-red-600">오류 발생:</b> ' + escapeHtml(err.message);
+                alert('OCR 분석 중 오류가 발생했습니다.\n' + err.message);
+            } finally {
+                startBtn.disabled = false;
+            }
+        };
+
+        function renderOcrParsedMembers(members) {
+            const container = document.getElementById('ocr-members-list');
+            const countEl = document.getElementById('ocr-found-count');
+            const resultSection = document.getElementById('ocr-result-section');
+
+            countEl.textContent = members.length;
+            container.innerHTML = '';
+
+            if (members.length === 0) {
+                container.innerHTML = '<div class="text-center text-xs text-slate-500 py-6 font-bold">인식된 성도 명단이 없습니다. 이미지를 다시 확인해 주세요.</div>';
+                resultSection.classList.remove('hidden');
+                return;
+            }
+
+            const existingMembersSet = new Set();
+            for (let k in allMembersObj) {
+                (allMembersObj[k] || []).forEach(name => {
+                    existingMembersSet.add(stripRoleSuffix(name));
+                });
+            }
+
+            members.forEach((m, idx) => {
+                const cleanName = stripRoleSuffix(m.name);
+                const isAlreadyRegistered = existingMembersSet.has(cleanName);
+
+                const item = document.createElement('div');
+                item.className = 'bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-sm';
+                item.innerHTML = `
+                    <div class="flex items-center gap-2 flex-1">
+                        <input type="checkbox" id="ocr-member-check-${idx}" checked data-idx="${idx}" class="ocr-member-checkbox w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <input type="text" value="${escapeHtml(m.name)}" id="ocr-member-name-${idx}"
+                                    class="font-black text-slate-900 text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 outline-none focus:border-indigo-500 w-24">
+                                ${isAlreadyRegistered
+                        ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">기존성도</span>'
+                        : '<span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">신규미등록</span>'
+                    }
+                            </div>
+                            <div class="text-[10px] font-bold text-slate-500 mt-0.5 flex gap-2">
+                                <span>📞 ${m.phone || '연락처 없음'}</span>
+                                <span>🏷️ ${m.role || '성도'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+
+            resultSection.classList.remove('hidden');
+        }
+
+        window.toggleOcrSelectAll = function (masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.ocr-member-checkbox');
+            checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+        };
+
+        function getSelectedOcrMembers() {
+            const selected = [];
+            const checkboxes = document.querySelectorAll('.ocr-member-checkbox');
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    const idx = parseInt(cb.dataset.idx, 10);
+                    const editedName = document.getElementById('ocr-member-name-' + idx)?.value?.trim() || currentOcrParsedMembers[idx]?.name || '';
+                    if (editedName) {
+                        selected.push({
+                            ...currentOcrParsedMembers[idx],
+                            name: editedName
+                        });
+                    }
+                }
+            });
+            return selected;
+        }
+
+        window.applyOcrBatchAdd = function () {
+            const selected = getSelectedOcrMembers();
+            if (selected.length === 0) {
+                alert('선택된 인원이 없습니다.');
+                return;
+            }
+
+            const targetGroupKey = document.getElementById('ocr-target-group-select').value;
+            if (!targetGroupKey) {
+                alert('등록할 조를 선택해 주세요.');
+                return;
+            }
+
+            const groupLabel = targetGroupKey.replace(DEPT_NAME + '_', '');
+            if (!confirm(`선택한 ${selected.length}명의 인원을 [${groupLabel}]에 일괄 신규 등록하시겠습니까?`)) {
+                return;
+            }
+
+            let existingArr = allMembersObj[targetGroupKey] ? [...allMembersObj[targetGroupKey]] : [];
+            let addedCount = 0;
+
+            selected.forEach(m => {
+                const nameToAdd = m.name;
+                if (!existingArr.includes(nameToAdd)) {
+                    existingArr.push(nameToAdd);
+                    addedCount++;
+                }
+            });
+
+            if (addedCount === 0) {
+                alert('선택한 인원이 이미 해당 조에 모두 등록되어 있습니다.');
+                return;
+            }
+
+            const sortedArr = sortMembers(existingArr);
+            db.ref('members/' + targetGroupKey).set(sortedArr).then(() => {
+                alert(`🎉 [${groupLabel}]에 ${addedCount}명의 신규 성도 등록이 완료되었습니다!`);
+                closeOcrScanModal();
+            }).catch(err => {
+                alert('등록 중 오류 발생: ' + err.message);
+            });
+        };
+
+        window.applyOcrAttendanceCheck = function () {
+            const selected = getSelectedOcrMembers();
+            if (selected.length === 0) {
+                alert('선택된 인원이 없습니다.');
+                return;
+            }
+
+            const dateStr = document.getElementById('today-date').value;
+            if (!confirm(`선택한 ${selected.length}명의 인원을 오늘(${dateStr}) 출석으로 체크하시겠습니까?`)) {
+                return;
+            }
+
+            const updates = {};
+            selected.forEach(m => {
+                const cleanName = m.name;
+                updates['attendance/' + dateStr + '/' + DEPT_NAME + '/present_list/' + cleanName] = true;
+                updates['global_absentee_reasons_' + DEPT_NAME + '/' + cleanName] = null;
+            });
+
+            db.ref().update(updates).then(() => {
+                alert(`✅ ${selected.length}명의 출석 체크가 반영되었습니다!`);
+                closeOcrScanModal();
+            }).catch(err => {
+                alert('출석 체크 반영 중 오류 발생: ' + err.message);
+            });
+        };
     </script>
 </body>
 

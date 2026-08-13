@@ -1272,7 +1272,6 @@
             const v1 = visitors.filter(v => v.service === 1); const v2 = visitors.filter(v => v.service === 2);
             const total1 = manualTotal1 !== null ? manualTotal1 : (presentSet1.size + v1.length);
             const total2 = manualTotal2 !== null ? manualTotal2 : (presentSet2.size + v2.length);
-            const mainTotal = total1 + total2;
 
             let html = "";
 
@@ -1286,7 +1285,7 @@
                     fetchSundayAttendance(sundays[3])
                 ]);
 
-                // If selected date matches sundays[0], prefer live UI totals for 1부/2부 if set
+                // 금주: UI 입력값(manualTotal) 우선 적용, 과거 주차: DB 수치
                 const liveTotal1 = (selectedDateStr === sundays[0]) ? total1 : w0Data.total1;
                 const liveTotal2 = (selectedDateStr === sundays[0]) ? total2 : w0Data.total2;
                 const liveMainTotal = liveTotal1 + liveTotal2;
@@ -1297,6 +1296,11 @@
                 const kTotal = w0Data.kTotal;
                 const deptTotal = yTotal + mTotal + eTotal + kTotal;
                 const grandTotal = liveMainTotal + deptTotal;
+
+                // 과거 3주의 grandTotal은 w1~w3의 mainTotal + deptTotal을 그대로 사용
+                const w1Grand = w1Data.grandTotal;
+                const w2Grand = w2Data.grandTotal;
+                const w3Grand = w3Data.grandTotal;
 
                 const v1_report = v1.filter(v => v.type === 'new' || v.type === 'visit');
                 const v2_report = v2.filter(v => v.type === 'new' || v.type === 'visit');
@@ -1357,6 +1361,9 @@
                         </div>
                     </div>
                 </div>`;
+
+                // 4주 데이터를 window에 저장 → 차트 블록에서 Firebase 재쿼리 없이 재사용
+                window._reportWeekData = { w3Grand, w2Grand, w1Grand, curGrand: grandTotal };
             } else if (type === 2) {
                 const getPList = (groupKeys, currentSet) => {
                     let list = []; groupKeys.forEach(key => { (allMembersData[key] || []).forEach(n => { if (currentSet.has(n)) list.push(n); }); });
@@ -1557,24 +1564,19 @@
             setTimeout(scaleReport, 50);
 
             if (type === 1 && typeof Chart !== 'undefined') {
-                setTimeout(async () => {
-                    const selectedDateStr = document.getElementById('today-date').value;
-                    const sundays = getRecentSundays(selectedDateStr);
-                    const [w0Data, w1Data, w2Data, w3Data] = await Promise.all([
-                        fetchSundayAttendance(sundays[0]),
-                        fetchSundayAttendance(sundays[1]),
-                        fetchSundayAttendance(sundays[2]),
-                        fetchSundayAttendance(sundays[3])
-                    ]);
+                // Firebase 재쿼리 없이 위에서 저장한 4주 데이터를 그대로 사용
+                setTimeout(() => {
+                    const wd = window._reportWeekData || {};
+                    const w3 = wd.w3Grand || 0;
+                    const w2 = wd.w2Grand || 0;
+                    const w1 = wd.w1Grand || 0;
+                    const curGrand = wd.curGrand || 0;
 
-                    const liveTotal1 = (selectedDateStr === sundays[0]) ? total1 : w0Data.total1;
-                    const liveTotal2 = (selectedDateStr === sundays[0]) ? total2 : w0Data.total2;
-                    const liveMainTotal = liveTotal1 + liveTotal2;
-
-                    const curGrand = liveMainTotal + w0Data.deptTotal;
-                    const w1 = w1Data.grandTotal;
-                    const w2 = w2Data.grandTotal;
-                    const w3 = w3Data.grandTotal;
+                    // 4주 최댓값 기반으로 Y축 스케일 동적 계산
+                    const dataMax = Math.max(w3, w2, w1, curGrand);
+                    const yMax = Math.ceil((dataMax * 1.15) / 10) * 10; // 15% 여유 후 10 단위 올림
+                    // 붉은 기준선: 4주 평균 (소수점 없이)
+                    const avgVal = Math.round((w3 + w2 + w1 + curGrand) / 4);
 
                     const ctx = document.getElementById('trendChart').getContext('2d');
                     if (chartInstance) chartInstance.destroy();
@@ -1595,7 +1597,7 @@
                             layout: { padding: { top: 20 } },
                             plugins: { legend: { display: false } },
                             scales: {
-                                y: { display: false, min: 0, suggestedMax: Math.max(350, curGrand + 50) },
+                                y: { display: false, min: 0, suggestedMax: yMax },
                                 x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8' } }
                             },
                             animation: {
@@ -1604,13 +1606,14 @@
                                     const meta = chartInstance.getDatasetMeta(0);
                                     const yAxis = chartInstance.scales.y;
 
-                                    if (yAxis.max >= 300) {
-                                        const y300 = yAxis.getPixelForValue(300);
+                                    // 4주 평균선 (동적 기준선)
+                                    if (avgVal > 0) {
+                                        const yAvg = yAxis.getPixelForValue(avgVal);
                                         ctx.save();
                                         ctx.beginPath();
                                         ctx.setLineDash([5, 5]);
-                                        ctx.moveTo(chartInstance.chartArea.left, y300);
-                                        ctx.lineTo(chartInstance.chartArea.right, y300);
+                                        ctx.moveTo(chartInstance.chartArea.left, yAvg);
+                                        ctx.lineTo(chartInstance.chartArea.right, yAvg);
                                         ctx.lineWidth = 1;
                                         ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
                                         ctx.stroke();
@@ -1619,7 +1622,7 @@
                                         ctx.font = 'bold 10px "Noto Sans KR"';
                                         ctx.textAlign = 'right';
                                         ctx.textBaseline = 'bottom';
-                                        ctx.fillText('300명', chartInstance.chartArea.right, y300 - 2);
+                                        ctx.fillText('평균 ' + avgVal + '명', chartInstance.chartArea.right, yAvg - 2);
                                         ctx.restore();
                                     }
 
